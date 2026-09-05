@@ -1,8 +1,8 @@
 # Ring Rush
 
-Portrait 3D boxing survival in **Godot 4.5.1**, with an Android/iOS export pipeline and reusable `addons/mobile_core/` services. This build includes a 3D fighter carousel with drag-to-rotate inspection, six coin-unlockable fighting identities using two human base meshes and distinct equipment, icon-led move selection with playable effect previews, five shaped venues with obstacles, and finite 10/30/50-wave challenges.
+Portrait 3D boxing survival in **Godot 4.5.1**, with Web and universal macOS playtests plus an Android/iOS export pipeline and reusable `addons/mobile_core/` services. This build includes a 3D fighter carousel with drag-to-rotate inspection, nine fighting identities using two human bases, distinct equipment and three CC0 creature models, icon-led move selection with playable effect previews, five shaped venues with obstacles, and eight challenge modes including 10/30/50-wave survival, Hell and Boss Rush.
 
-**Status:** playable and validated on macOS. Native ads/IAP adapters, receipt validation, signed mobile binaries and physical Android/iOS testing remain pending. The development cosmetic store explicitly simulates transactions; fighter and technique purchases use earned game coins.
+**Status:** standalone Web and universal Mac playtests exported and smoke-tested. Native ads/IAP adapters, receipt validation, signed mobile binaries and physical Android/iOS testing remain pending. The development cosmetic store explicitly simulates transactions; fighter and technique purchases use earned game coins.
 
 ## Play
 
@@ -29,7 +29,7 @@ Dodge red attack warnings. Collect teal XP, choose one of three upgrades and com
 
 ## Menus and ads
 
-Home focuses on the selected fighter and one Play/Resume action. Drag the fighter to turn it; use the arrows or keyboard left/right to switch identities to see each model, attributes, signature and coin cost together; browsing never equips or spends coins. Six skills have different icons and colors, a short tactical hint and a **Try Effect** button. The shop groups remove ads, training and cosmetics.
+Home focuses on the selected fighter and one Play/Resume action. Drag the fighter to turn it; use the arrows or keyboard left/right to switch identities to see each model, attributes, signature and coin cost together; browsing never equips or spends coins. Six skills have different icons and colors, a short tactical hint and a **Try Effect** button. The shop has six graphical cards in two columns. The GYM has five permanent stat upgrades with a visible purchase action and a fixed Quick Fight / Resume button.
 
 Development monetization is fully interactive but simulated:
 
@@ -44,11 +44,14 @@ Development monetization is fully interactive but simulated:
 ## Challenges and venues
 
 - **Quick Fight:** 10 clear-based waves, designed for a short session.
+- **Blitz:** eight waves, 0.22-second spawn intervals and one-second breaks.
+- **Hell:** twenty dense waves, 0.18-second spawns, 0.75-second breaks, creatures from wave one and no ordinary-wave healing.
+- **Boss Rush:** five bosses with alternating rush, slam and ranged-circle patterns.
 - **Survival 30 / Onslaught 50:** complete 30 or 50 waves with an increasingly strong build.
 - **World Ladder:** 25 waves across all five venues, changing venue after each five-wave boss.
 - **90-second Rush:** the original timed format, champion at 75 seconds and a bounded 30-second overtime.
 
-Venues: **The Underground** boxing ring, **Neon Siege** street ambush, **Skyline Rooftop** helipad, **Iron Foundry** with timed steam vents, and **Dawn Temple** courtyard. The street is a long rectangle, rooftop an octagon, foundry a wide rectangle and temple a six-sided courtyard. Solid props block movement and dashes; enemies steer around them. Trees and instanced spectators populate the perimeter. Winning a venue unlocks the next for standalone fights. Ladder visits them automatically. Bosses currently share the telegraphed area-slam behavior with different scaled stats.
+Venues: **The Underground** boxing ring, **Neon Siege** street ambush, **Skyline Rooftop** helipad, **Iron Foundry** with timed steam vents, and **Dawn Temple** courtyard. The street is a long rectangle, rooftop an octagon, foundry a wide rectangle and temple a six-sided courtyard. Solid props block movement and dashes; enemies steer around them. Trees and instanced spectators populate the perimeter. Winning a venue unlocks the next for standalone fights. Ladder visits them automatically. Boss Rush changes attack patterns between rush, slam and locked ranged circles; other modes retain the area-slam champion.
 
 ## Fighters and moves
 
@@ -60,8 +63,11 @@ Venues: **The Underground** boxing ring, **Neon Siege** street ambush, **Skyline
 | Volt | 95 / 17 | Thunder Step — up to eight chained targets | Live wire | 420 |
 | Raven | 90 / 23 | Rising Dragon — uppercut and launch | Fighting spirit | 550 |
 | Sol | 105 / 19 | Solar Wave — piercing fire projectile | Hot knuckles | 700 |
+| Rattle | 100 / 22 | Hundred Hands | Quick combo | 320 |
+| Shade | 90 / 24 | Rising Dragon | Sweet spot | 480 |
+| Hex | 120 / 17 | Thunder Step | Live wire | 620 |
 
-Movement speed and punch timing also differ. Unlocking a fighter includes its technique. Techniques can be purchased separately and equipped on any owned fighter. Atlas and Fault Line are available from the start. The gym retains permanent power/health/charge training. Coins, ownership and selection commit atomically; failed writes do not debit the balance.
+Movement speed and punch timing also differ. Unlocking a fighter includes its technique. Techniques can be purchased separately and equipped on any owned fighter. Atlas and Fault Line are available from the start. The gym offers power, health, initial energy, speed and technique cooldown upgrades, with five levels each. Coins, ownership and selection commit atomically; failed writes do not debit the balance.
 
 ## Save and resume
 
@@ -70,7 +76,7 @@ Active fights checkpoint every 15 seconds, on wave clears and when the app loses
 ## Performance and reusable core
 
 - Pool of 48 opponents / 64 pickups; combat does not create/free actors.
-- Hero uses male/female imported humanoid skeletons with bone-bound equipment. Crowds share reduced meshes with 24 Hz baked real animation poses, in two surfaces per frame. The complete crowd animation asset is about 8.1 MB compressed, including the new fall poses.
+- Hero uses male/female imported humanoid skeletons with bone-bound equipment. Crowds share reduced meshes with 24 Hz baked real animation poses, in two surfaces per frame. Six shared crowd pose libraries cover human and creature silhouettes; each opponent still draws two surfaces and uses no live skeleton.
 - Environments are batched; spectators, particles and ground cracks use instancing.
 - Fixed limits: 192 particles, 12 shockwave rings, 48 crack segments, 16 damage numbers and six SFX voices. Music has its own player and mute setting.
 - Spatial crowd separation, fixed physics simulation, safe-area UI and independent second-finger action controls.
@@ -105,3 +111,23 @@ Model/animation attribution and license: [asset credits](assets/fighters/CREDITS
 Design decisions and next production priorities: [game plan](docs/game-plan.md). Current native-renderer screenshots: [quality previews](docs/quality-preview/).
 
 The latest refinement adds content-sized upgrade cards, side navigation, five coin-funded permanent stats, three simulated coin packs, larger arenas and charger / spark / guard enemies with distinct tactics. Essential skill effects remain visible with extra particles disabled. See [refinement screenshots](docs/refinement-preview/overview.jpg) and the [two supplied FBX model assessment](docs/model-review/README.md). The supplied models are optimized previews; animation retargeting needs correction before they become playable fighters.
+
+
+## Friend playtest 0.2.0
+
+See [playtest instructions](docs/playtest.md). Exports are ignored build artifacts:
+
+- `builds/mac/RingRush.zip`: universal app (Intel + Apple Silicon), with ad-hoc signing; not Apple-notarized.
+- `builds/RingRush-Web-Playtest.zip`: static WebGL 2 / WebAssembly build. Serve over HTTP(S); opening `index.html` through `file://` does not work.
+
+Both use the isolated `profile.playtest.json`, a one-time 1,200-coin welcome grant and clearly labelled free mock purchases. They make no real charges. Native release presets do not enable the playtest feature.
+
+Install the matching Godot 4.5.1 export templates, then run:
+
+```sh
+python3 tools/export_playtest.py --godot /path/to/Godot
+```
+
+Alternatively pass `--templates /folder/with/templates` containing `web_nothreads_release.zip` and `macos.zip`. The script temporarily supplies those paths and restores the preset file afterwards. The Web shell keeps a portrait canvas centered on wide screens; desktop/mobile texture compression variants are enabled. `builds/.gdignore` prevents exported assets from being imported back into the project.
+
+Run `godot --headless --path . --script res://tests/playtest_tests.gd` for the new mode, model, save and UI checks. [Current screenshots](docs/playtest-preview/overview.jpg) and [validation](docs/validation.md) describe the tested boundaries.

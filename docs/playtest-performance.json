@@ -1,0 +1,12 @@
+{
+  "character": "hex",
+  "draw_calls": 301.0,
+  "enemies": 48,
+  "median_frame_ms": 2.101,
+  "nodes": 454.0,
+  "p95_frame_ms": 3.837,
+  "primitives": 662548.0,
+  "stage": 1,
+  "stress": true,
+  "viewport": "(540.0, 960.0)"
+}

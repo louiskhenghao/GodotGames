@@ -46,7 +46,7 @@ func run():
 		for i in 12: game._update_technique(.1)
 		check(target.health<hp,"technique damages target: "+m.id)
 		game.finish_run(false)
-	for id in ["sprint","survival30","onslaught50","ladder"]:
+	for id in ["sprint","survival30","onslaught50","ladder","hell","blitz","bossrush"]:
 		game.go_home()
 		game.run_mode=id
 		game.start_run()

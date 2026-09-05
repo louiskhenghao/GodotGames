@@ -1,0 +1,22 @@
+{
+  "menu": {
+    "seconds": 36.926,
+    "decoded_peak": 0.9386,
+    "loop_edge_delta": 0.2165
+  },
+  "fight": {
+    "seconds": 26.668,
+    "decoded_peak": 0.8998,
+    "loop_edge_delta": 0.0303
+  },
+  "street": {
+    "seconds": 27.826,
+    "decoded_peak": 0.9104,
+    "loop_edge_delta": 0.0494
+  },
+  "hell": {
+    "seconds": 24.616,
+    "decoded_peak": 0.9362,
+    "loop_edge_delta": 0.0472
+  }
+}

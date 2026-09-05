@@ -89,6 +89,7 @@ func build(is_hero: bool, elite: bool = false) -> void:
 		if variants.is_empty():
 			variants["raven"]=load("res://assets/fighters/crowd_raven.res")
 			variants["titan"]=load("res://assets/fighters/crowd_titan.res")
+			for id in ["rattle","shade","hex"]:variants[id]=load("res://assets/fighters/crowd_"+id+".res")
 		crowd_poses=crowd_library
 		body=Node3D.new()
 		body.rotation.y=PI
@@ -162,15 +163,17 @@ func configure(kind: String) -> void:
 	rush_hit=false
 	if not hero:
 		var variant:String="raven" if kind in ["runner","spark"] else ("titan" if kind in ["brute","boss","charger","guard"] else "atlas")
+		variant={"bone":"rattle","revenant":"shade","hexer":"hex"}.get(kind,variant)
 		crowd_poses=crowd_library if variant=="atlas" else variants[variant]
 		crowd_mesh.mesh=crowd_poses.clips.Idle[0]
 		var skin:StandardMaterial3D=crowd_mesh.get_surface_override_material(0)
-		skin.albedo_texture=load("res://assets/fighters/T_Superhero_Female_Dark_BaseColor.png" if variant=="raven" else "res://assets/fighters/T_Superhero_Male_Dark.png")
-	if hero: outfit.mesh = clothing(skin_mesh.mesh, character_id != "atlas",character_id)
-	var tint: Color = RushRoster.character(character_id).color if hero else {"rookie":Color("d74f52"),"runner":Color("6886d6"),"brute":Color("c59245"),"boss":Color("8c63b3"),"charger":Color("ef624b"),"spark":Color("72ceff"),"guard":Color("59bfb2")}.get(role,Color("d74f52"))
+		skin.albedo_texture=load("res://assets/fighters/kaykit/skeleton_texture.png") if kind in ["bone","revenant","hexer"] else load("res://assets/fighters/T_Superhero_Female_Dark_BaseColor.png" if variant=="raven" else "res://assets/fighters/T_Superhero_Male_Dark.png")
+	if hero and not is_creature(): outfit.mesh = clothing(skin_mesh.mesh, character_id != "atlas",character_id)
+	var tint: Color = RushRoster.character(character_id).color if hero else {"rookie":Color("d74f52"),"runner":Color("6886d6"),"brute":Color("c59245"),"boss":Color("8c63b3"),"charger":Color("ef624b"),"spark":Color("72ceff"),"guard":Color("59bfb2"),"bone":Color("e2d4a1"),"revenant":Color("c5a2ff"),"hexer":Color("9aedcf")}.get(role,Color("d74f52"))
 	var cloth := material(tint)
 	cloth.vertex_color_use_as_albedo = true
-	if hero: outfit.material_override = cloth
+	if hero:
+		if not is_creature():outfit.material_override = cloth
 	else:
 		cloth.shading_mode=BaseMaterial3D.SHADING_MODE_PER_VERTEX
 		crowd_mesh.set_surface_override_material(1,cloth)
@@ -254,29 +257,38 @@ func set_gold(enabled: bool) -> void:
 	var tint: Color = Color("e9b741") if gold else RushRoster.character(character_id).color
 	for glove in gloves: glove.material_override.albedo_color = tint
 
+func is_creature() -> bool:
+	return RushRoster.character(character_id).has("model")
+
 func _build_hero() -> void:
-	body = (load("res://assets/fighters/boxer_female.gltf") if RushWardrobe.female(character_id) else HUMAN).instantiate()
+	if is_creature():body=load("res://assets/fighters/kaykit/"+RushRoster.character(character_id).model+".scn").instantiate()
+	else:body = (load("res://assets/fighters/boxer_female.gltf") if RushWardrobe.female(character_id) else HUMAN).instantiate()
 	add_child(body)
 	body.rotation.y = PI
 	skeleton = body.find_child("Skeleton3D", true, false)
 	animator = body.find_child("AnimationPlayer", true, false)
 	animator.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
-	skin_mesh = body.find_child("Superhero_Female" if RushWardrobe.female(character_id) else "SuperHero_Male", true, false)
-	outfit = MeshInstance3D.new()
-	outfit.skin = skin_mesh.skin
-	outfit.skeleton = NodePath("..")
-	skeleton.add_child(outfit)
+	if is_creature():
+		for mesh:MeshInstance3D in body.find_children("*","MeshInstance3D",true,false):
+			if "Body" in mesh.name:skin_mesh=mesh;break
+		outfit=skin_mesh
+	else:
+		skin_mesh = body.find_child("Superhero_Female" if RushWardrobe.female(character_id) else "SuperHero_Male", true, false)
+		outfit = MeshInstance3D.new()
+		outfit.skin = skin_mesh.skin
+		outfit.skeleton = NodePath("..")
+		skeleton.add_child(outfit)
 	for side in ["l", "r"]:
 		var attachment := BoneAttachment3D.new()
 		skeleton.add_child(attachment)
-		attachment.bone_name = "hand_" + side
+		attachment.bone_name = ("hand." if is_creature() else "hand_") + side
 		var glove := MeshInstance3D.new()
 		glove.mesh = RushModelFactory.bake([
 			RushModelFactory.piece("sphere", Vector3(.22,.27,.23), Vector3(0,.065,0), Color.WHITE),
 			RushModelFactory.piece("box", Vector3(.16,.08,.17), Vector3(0,-.055,0), Color("f8efd9"))],12)
 		attachment.add_child(glove)
 		gloves.append(glove)
-	RushWardrobe.build(skeleton,character_id)
+	if not is_creature():RushWardrobe.build(skeleton,character_id)
 
 func hurt(flash:bool=true) -> void:
 	hit_time=.23

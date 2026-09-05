@@ -36,12 +36,12 @@ static func valid(state: Variant) -> bool:
 	if not _vector_valid(state.get("position")): return false
 	for enemy in state.enemies:
 		if not enemy is Dictionary or not _vector_valid(enemy.get("position")): return false
-		if enemy.get("role") not in ["rookie","runner","brute","boss","charger","spark","guard"]: return false
+		if enemy.get("role") not in ["rookie","runner","brute","boss","charger","spark","guard","bone","revenant","hexer"]: return false
 		for key in ["health","max_health","speed","attack_timer","windup","burn","burn_damage","frost","dot_clock"]:
 			if not (enemy.get(key) is int or enemy.get(key) is float): return false
 	for position in state.pickups:
 		if not _vector_valid(position): return false
-	return state.get("run_mode") in ["classic","sprint","survival30","onslaught50","ladder"] and state.get("options") is Array
+	return state.get("run_mode") in ["classic","sprint","survival30","onslaught50","ladder","hell","blitz","bossrush"] and state.get("options") is Array
 static func _vector_valid(value: Variant) -> bool:
 	if not value is Array or value.size()!=3: return false
 	for n in value:

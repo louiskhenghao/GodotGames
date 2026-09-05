@@ -183,13 +183,20 @@ func button(text: String, action: Callable, primary: bool = false, glyph: String
 	if not glyph.is_empty():
 		var symbol := icon(glyph, INK if primary else TEAL)
 		node.add_child(symbol)
-		symbol.position = Vector2(16, 14)
-		symbol.size = Vector2(28,28)
+		symbol.size = Vector2(32,32)
+		node.resized.connect(func():_place_glyph(node,symbol))
+		node.tree_entered.connect(func():_place_glyph.call_deferred(node,symbol))
 		node.set_meta("glyph",symbol)
 		node.set_meta("glyph_tint",symbol.tint)
 	if action.is_valid(): node.pressed.connect(action)
 	buttons.append(node)
 	return node
+
+func _place_glyph(b,symbol) -> void:
+	if not is_instance_valid(b) or not is_instance_valid(symbol):return
+	if b.get_meta("nav_tile",false):symbol.position=Vector2((b.size.x-symbol.size.x)*.5,12)
+	elif b.text.is_empty():symbol.position=(b.size-symbol.size)*.5
+	else:symbol.position=Vector2(18,(b.size.y-symbol.size.y)*.5)
 
 func clear(page_name: String = "") -> void:
 	_remove_upgrade()
@@ -257,7 +264,7 @@ func home() -> void:
 	var options_button:=button("",settings,false,"gear")
 	options_button.custom_minimum_size=Vector2(50,50)
 	header.add_child(options_button)
-	var name_plate:=column(.59,.66)
+	var name_plate:=column(.64,.72)
 	var fighter_name:=label(game.selected_character().name,34,PAPER,true)
 	fighter_name.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	name_plate.add_child(fighter_name)
@@ -289,7 +296,7 @@ func home() -> void:
 		b.name=entry[0]
 		b.tooltip_text=entry[0]
 		b.custom_minimum_size=Vector2(74,78)
-		b.get_meta("glyph").position=Vector2(23,12)
+		b.set_meta("nav_tile",true)
 		var caption:=label(entry[0],16,PAPER,true)
 		caption.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 		caption.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -506,7 +513,7 @@ func ability_card(entry: Dictionary, action: Callable, choice: bool) -> Button:
 	title.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	text.add_child(title)
 	text.add_child(body_text(entry.detail,16,Color("d7e9ff")))
-	var rank_label:=body_text(entry.tag+("    RANK %d → %d"%[rank,rank+1] if choice else "    %d / %d"%[rank,entry.max]),12,skill_color)
+	var rank_label:=body_text(entry.tag+("    RANK %d > %d"%[rank,rank+1] if choice else "    %d / %d"%[rank,entry.max]),12,skill_color)
 	rank_label.name="Rank"
 	text.add_child(rank_label)
 	for child in text.get_children():child.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -555,9 +562,13 @@ func abilities(options: Array) -> void:
 	upgrade_choices.add_theme_constant_override("separation",10)
 	upgrade_scroll.add_child(upgrade_choices)
 	for entry in options:upgrade_choices.add_child(ability_card(entry,func():game.choose_ability(entry.id),true))
-	var reroll_button:=button("REROLL  /  %d LEFT"%game.rerolls,game.reroll,false,"orbit")
+	var reroll_button:=button("SHUFFLE  ·  %d"%game.rerolls,game.reroll,false,"orbit")
 	reroll_button.custom_minimum_size.y=50
 	reroll_button.disabled=game.rerolls<=0
+	for state in ["normal","hover","pressed"]:
+		var shuffle_style:=style(Color("254981") if state=="normal" else Color("34619f"),14)
+		shuffle_style.set_border_width_all(1);shuffle_style.border_color=Color("6391cd")
+		reroll_button.add_theme_stylebox_override(state,shuffle_style)
 	col.add_child(reroll_button)
 	upgrade_choices.minimum_size_changed.connect(_fit_upgrade)
 	upgrade_overlay.resized.connect(_fit_upgrade)
@@ -665,56 +676,54 @@ func circuits(keep_index:bool=false) -> void:
 	game.preview_venue(venue_index)
 	_veil(0,.18,.90,0)
 	showroom_header("CHOOSE A FIGHT")
-	# The real 3D venue is above its controls. An opaque lower deck stays still.
 	var deck:=RushMenuBackdrop.new()
 	deck.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	deck.anchor_top=.49
-	deck.offset_top=0
+	deck.anchor_top=.45;deck.offset_top=0
 	screen.add_child(deck)
-	var col:=column(.51,.98)
-	col.add_theme_constant_override("separation",9)
-	var select:=row()
-	col.add_child(select)
+	var scroll:=ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.anchor_top=.47;scroll.offset_top=0;scroll.offset_bottom=-130
+	scroll.offset_left=28;scroll.offset_right=-28
+	scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	screen.add_child(scroll)
+	var col:=VBoxContainer.new();col.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation",12);scroll.add_child(col)
+	var select:=row();col.add_child(select)
 	var left:=button("",func():cycle_venue(-1),false,"back")
-	left.custom_minimum_size.x=52
-	select.add_child(left)
+	left.custom_minimum_size=Vector2(52,52);select.add_child(left)
 	var name:=label(RushBalance.STAGES[venue_index].name,28,PAPER,true)
 	name.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	name.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	name.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	name.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	select.add_child(name)
 	var right:=button("",func():cycle_venue(1),false,"right")
-	right.custom_minimum_size.x=52
-	select.add_child(right)
-	left.disabled=game.run_mode=="ladder"
-	right.disabled=game.run_mode=="ladder"
+	right.custom_minimum_size=Vector2(52,52);select.add_child(right)
+	left.disabled=game.run_mode=="ladder";right.disabled=game.run_mode=="ladder"
 	var unlocked:bool=venue_index<=int(MobileCore.save.data.progress.get("unlocked_stage",0))
-	col.add_child(body_text("All five venues · Automatic progression" if game.run_mode=="ladder" else (RushBalance.STAGES[venue_index].detail if unlocked else "LOCKED · Win the previous venue to enter."),16,TEAL if unlocked else AMBER))
-	var grid:=GridContainer.new()
-	grid.columns=2
-	grid.add_theme_constant_override("h_separation",10)
-	grid.add_theme_constant_override("v_separation",8)
+	col.add_child(body_text("5 VENUES" if game.run_mode=="ladder" else ("SELECT YOUR CHALLENGE" if unlocked else "LOCKED · Clear the previous venue"),14,TEAL if unlocked else AMBER))
+	var grid:=GridContainer.new();grid.columns=2
+	grid.add_theme_constant_override("h_separation",10);grid.add_theme_constant_override("v_separation",10)
 	col.add_child(grid)
 	for mode in RushWaveDirector.MODES:
-		var b:=button(mode.name,func():select_challenge(mode.id),game.run_mode==mode.id)
+		var b:=button(mode.name,func():select_challenge(mode.id),game.run_mode==mode.id,mode.icon)
+		b.name="Mode_"+mode.id
 		b.add_theme_font_size_override("font_size",20)
-		b.custom_minimum_size.y=48
-		b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size.y=52;b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 		grid.add_child(b)
 	col.add_child(body_text(RushWaveDirector.mode_info(game.run_mode).detail,15))
+	var footer:=column(1,1)
+	footer.offset_top=-100;footer.offset_bottom=-28
 	if game.has_resume():
-		var saved:=row()
-		col.add_child(saved)
-		for entry in [["RESUME FIGHT",game.resume_saved_run],["BANK SAVED FIGHT",game.bank_saved_run]]:
-			var b:=button(entry[0],entry[1],entry[0]=="RESUME FIGHT")
-			b.custom_minimum_size.y=54
-			b.add_theme_font_size_override("font_size",20)
-			b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		var saved:=row();footer.add_child(saved)
+		for entry in [["RESUME",game.resume_saved_run],["BANK & EXIT",game.bank_saved_run]]:
+			var b:=button(entry[0],entry[1],entry[0]=="RESUME","play" if entry[0]=="RESUME" else "coin")
+			b.add_theme_font_size_override("font_size",20);b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 			saved.add_child(b)
 	else:
-		var done:=button("USE THIS FIGHT" if unlocked else "VENUE LOCKED",func():game.stage=venue_index;game.go_home(),true,"play")
-		done.custom_minimum_size.y=54
-		done.disabled=not unlocked
-		col.add_child(done)
+		var done:=button("USE THIS FIGHT" if unlocked else "VENUE LOCKED",func():game.stage=venue_index;game.go_home(),true,"play" if unlocked else "lock")
+		done.name="ConfirmFight";done.disabled=not unlocked
+		footer.add_child(done)
 
 func select_challenge(id:String) -> void:
 	game.run_mode=id
@@ -735,7 +744,7 @@ func fighters(keep_index: bool=false) -> void:
 	_veil(0,.17,.75,0)
 	_veil(.53,1,.28,.98)
 	showroom_header("FIGHTERS")
-	var gesture:=column(.55,.58)
+	var gesture:=column(.54,.57)
 	var tip:=label("DRAG TO ROTATE  /  ARROWS SWITCH",13,MUTED)
 	tip.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	gesture.add_child(tip)
@@ -749,7 +758,8 @@ func fighters(keep_index: bool=false) -> void:
 		arrow.offset_left=22 if side<0 else -78
 		arrow.offset_right=78 if side<0 else -22
 		screen.add_child(arrow)
-	var info:=column(.59,.88)
+	var info:=column(.58,1)
+	info.offset_bottom=-112
 	var heading:=row()
 	info.add_child(heading)
 	var name:=label(fighter.name,38,PAPER,true)
@@ -764,10 +774,13 @@ func fighters(keep_index: bool=false) -> void:
 	info.add_child(move_line)
 	move_line.add_child(icon(visual.icon,visual.color,30))
 	move_line.add_child(label(visual.short+"  ·  "+visual.tag,18,visual.color,true))
-	info.add_child(body_text(fighter.passive,15))
+	var passive:=body_text(fighter.passive,15)
+	info.add_child(passive)
 	var owned:=RushRoster.owned(MobileCore.save,"character",fighter.id)
 	var selected:bool=game.selected_character().id==fighter.id
-	var bottom:=column(.90,.98)
+	var bottom:=column(1,1)
+	bottom.offset_top=-94
+	bottom.offset_bottom=-28
 	var select:=button("SELECTED" if selected else ("USE FIGHTER" if owned else "UNLOCK  /  %d COINS"%fighter.price),func():
 		if not RushRoster.unlock(MobileCore.save,"character",fighter.id):toast("Not enough coins, or storage is unavailable.");return
 		if not RushRoster.equip(MobileCore.save,"character",fighter.id):toast("Selection could not be saved.");return
@@ -850,35 +863,60 @@ func moves(keep_index: bool=false) -> void:
 	book.add_theme_font_size_override("font_size",18)
 	bottom.add_child(book)
 
+func _card_grid(parent:Control) -> GridContainer:
+	var grid:=GridContainer.new();grid.columns=2
+	grid.add_theme_constant_override("h_separation",12)
+	grid.add_theme_constant_override("v_separation",12)
+	grid.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	parent.add_child(grid)
+	return grid
+
+func _visual_card(parent:Control,title:String,art:String,tint:Color,detail:String,cta:String,action:Callable,disabled:bool=false) -> Button:
+	var panel:=PanelContainer.new();panel.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	var surface:=style(Color("162c45"),16)
+	surface.set_content_margin_all(12)
+	panel.add_theme_stylebox_override("panel",surface);parent.add_child(panel)
+	var col:=VBoxContainer.new();col.add_theme_constant_override("separation",6);panel.add_child(col)
+	var image:=RushRewardArt.new();image.kind=art;image.tint=tint
+	image.custom_minimum_size=Vector2(0,72);col.add_child(image)
+	var heading:=label(title,24,PAPER,true);heading.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	heading.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;col.add_child(heading)
+	var sub:=body_text(detail,14,Color("c4d9ed"));sub.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(sub)
+	var buy:=button(cta,action,true)
+	buy.custom_minimum_size.y=46;buy.add_theme_font_size_override("font_size",22)
+	for state in ["normal","hover","pressed","disabled"]:
+		var skin:=buy.get_theme_stylebox(state).duplicate()
+		skin.content_margin_top=8;skin.content_margin_bottom=8
+		buy.add_theme_stylebox_override(state,skin)
+	buy.disabled=disabled;buy.set_meta("permanent_disabled",disabled)
+	col.add_child(buy)
+	return buy
+
 func training() -> void:
 	var fighter:Dictionary=game.selected_character()
-	var col:=page("THE GYM","%d COINS  ·  Permanent boosts for every fighter"%MobileCore.save.data.coins,"training",home)
-	col.add_child(label("BUILD YOUR "+fighter.name,28,AMBER,true))
-	col.add_child(body_text("Upgrade your base stats. Every new fight starts stronger.",16))
+	var col:=page("GYM","%d COINS  ·  Tap + to upgrade your next fight"%MobileCore.save.data.coins,"training",home)
+	col.get_parent().anchor_bottom=1
+	col.get_parent().offset_bottom=-114
+	var grid:=_card_grid(col)
 	for entry in RushBalance.TRAINING:
 		var level:=RushTraining.level(MobileCore.save,entry.id)
 		var cost:=RushBalance.training_cost(level)
-		var heading:=row()
-		col.add_child(heading)
-		heading.add_child(icon(entry.icon,TEAL,28))
-		var title:=label(entry.title.to_upper(),28,PAPER,true)
-		title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-		heading.add_child(title)
-		heading.add_child(label("%d / 5"%level,19,TEAL,true))
 		var current:=RushTraining.display_value(fighter,entry.id,level)
 		var next:=RushTraining.display_value(fighter,entry.id,mini(5,level+1))
-		col.add_child(body_text(current+("  →  "+next if level<5 else "  ·  MAX"),25,AMBER))
-		col.add_child(body_text(entry.detail+" per level"+(" (base cooldown)" if entry.id=="mastery" else ""),16))
-		var b:=button("MAX LEVEL" if level>=5 else "UPGRADE  /  %d COINS"%cost,func():
-			if RushTraining.buy(MobileCore.save,entry.id):
-				training()
-				toast(entry.title.to_upper()+" UPGRADED")
-			else:toast("Upgrade unavailable. Check coins or free storage."),level<5,"coin")
-		b.disabled=level>=5 or MobileCore.save.data.coins<cost
-		b.set_meta("permanent_disabled",b.disabled)
-		col.add_child(b)
-		spacer(col,12)
-	col.add_child(button("GET COINS",shop,false,"coin"))
+		var title:String={"power":"POWER","health":"HEALTH","charge":"ENERGY","footwork":"SPEED","mastery":"COOLDOWN"}[entry.id]
+		var b:=_visual_card(grid,title,entry.icon,TEAL,current+(" > "+next if level<5 else " · MAX"),"MAX" if level>=5 else "+  %d COINS"%cost,func():
+			if RushTraining.buy(MobileCore.save,entry.id):training();toast(title+" UP!")
+			else:toast("Need more coins or free storage."),level>=5 or MobileCore.save.data.coins<cost)
+		var art:RushRewardArt=b.get_parent().get_child(0)
+		art.level=level;art.custom_minimum_size.y=62
+	_visual_card(grid,"MORE COINS","coin",AMBER,"Unlock your next upgrade","SHOP",shop)
+	var footer:=column(1,1)
+	footer.offset_top=-90;footer.offset_bottom=-24
+	var fight:=button("RESUME FIGHT" if game.has_resume() else "QUICK FIGHT",func():
+		if game.has_resume():game.resume_saved_run()
+		else:game.run_mode="sprint";game.start_run(),true,"play")
+	fight.name="GymFight";footer.add_child(fight)
 
 func skills() -> void:
 	var in_run: bool = game.mode == "paused"
@@ -898,31 +936,19 @@ func skills() -> void:
 
 func shop() -> void:
 	var test:bool=MobileCore.commerce.provider.is_mock
-	var owned:bool=game.ads_removed()
-	var col:=page("SHOP","Development store. Test purchases never charge money." if test else "Permanent upgrades and optional rewards.","shop",game.go_home)
-	col.add_child(icon("shield",AMBER,58))
-	col.add_child(label("REMOVE ADS",38,PAPER,true))
-	col.add_child(body_text("One permanent unlock. No banners or automatic ad breaks.",20,PAPER))
-	col.add_child(body_text("Optional reward videos stay available for revives and extra coins.",16))
-	var buy:=button("OWNED" if owned else ("TEST PURCHASE  /  NO CHARGE" if test else "STORE UNAVAILABLE"),func():MobileCore.commerce.buy("remove_ads"),not owned,"shield")
-	buy.disabled=owned or not test
-	buy.set_meta("permanent_disabled",buy.disabled)
-	col.add_child(buy)
-	spacer(col,16)
-	col.add_child(label("COIN PACKS",34,AMBER,true))
-	col.add_child(body_text("%d COINS  ·  Spend on fighters, moves and permanent stats."%MobileCore.save.data.coins,17))
+	var col:=page("SHOP","%d COINS  ·  Free test purchases"%MobileCore.save.data.coins if test else "%d COINS"%MobileCore.save.data.coins,"shop",game.go_home)
+	var grid:=_card_grid(col)
+	var ads:bool=game.ads_removed()
+	_visual_card(grid,"NO ADS","shield",TEAL,"Permanent · Reward videos stay","OWNED" if ads else ("TEST UNLOCK" if test else "UNAVAILABLE"),func():MobileCore.commerce.buy("remove_ads"),ads or not test)
+	var gold:bool=MobileCore.save.data.entitlements.get("gold_gloves",false)
+	_visual_card(grid,"GOLD GLOVES","fist",AMBER,"Cosmetic · Every fighter","OWNED" if gold else ("TEST UNLOCK" if test else "UNAVAILABLE"),func():MobileCore.commerce.buy("gold_gloves"),gold or not test)
 	for id in ["coins_500","coins_1500","coins_4000"]:
 		var pack:Dictionary=RushBalance.PRODUCTS[id]
-		col.add_child(label(pack.title,25,PAPER,true))
-		var purchase:=button(("TEST +%d COINS"%pack.coins) if test else "STORE UNAVAILABLE",func():MobileCore.commerce.buy(id),true,"coin")
-		purchase.disabled=not test
-		purchase.set_meta("permanent_disabled",not test)
-		col.add_child(purchase)
-	col.add_child(body_text("Test coin packs are free. Live prices will come from your app store.",15))
-	spacer(col,16)
-	col.add_child(button("TRAINING",training,false,"fist"))
-	col.add_child(button("GOLD GLOVES & COIN REWARDS",cosmetics,false,"coin"))
-	col.add_child(button("RESTORE PURCHASES",func():MobileCore.commerce.restore()))
+		_visual_card(grid,"%d COINS"%pack.coins,id,AMBER,"Fighters · Skills · Stats","TEST FREE" if test else "UNAVAILABLE",func():MobileCore.commerce.buy(id),not test)
+	_visual_card(grid,"60 COINS","ad",TEAL,"Optional reward video","WATCH" if test else "UNAVAILABLE",func():MobileCore.commerce.reward("training_coins"),not test)
+	var links:=row();col.add_child(links)
+	for entry in [["GYM",training,"fist"],["RESTORE",func():MobileCore.commerce.restore(),"shield"]]:
+		var b:=button(entry[0],entry[1],false,entry[2]);b.size_flags_horizontal=Control.SIZE_EXPAND_FILL;links.add_child(b)
 	_busy(not MobileCore.commerce.pending.is_empty())
 
 func cosmetics() -> void:

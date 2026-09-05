@@ -1,6 +1,7 @@
 extends SceneTree
 func _initialize(): call_deferred("run")
 func run():
+	root.size=Vector2i(540,960)
 	root.get_node("MobileCore").save = CoreSaveStore.new("user://benchmark-disposable.json")
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
@@ -24,7 +25,7 @@ func run():
 		game.spawn_clock = 100000
 	seed(42)
 	for i in 48:
-		game._spawn(Vector3(randf_range(-6,6),0,randf_range(-6,6)),["rookie","runner","brute","charger","spark","guard"][i%6])
+		game._spawn(Vector3(randf_range(-6,6),0,randf_range(-6,6)),["rookie","runner","brute","charger","spark","guard","bone","revenant","hexer"][i%9])
 	for enemy in game.enemies:
 		if stress: enemy.health = 1000000; enemy.max_health = 1000000
 	for i in 60: await process_frame

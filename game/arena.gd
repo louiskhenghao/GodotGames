@@ -348,8 +348,7 @@ func _build_showcase() -> void:
 	for x in [-6.8,6.8]:
 		for i in 4:
 			parts.append(RushModelFactory.piece("box",Vector3(.65,2.3,.5),Vector3(x+i*.72,1,-4),Color("34464d")))
-	for i in range(-5,6):
-		parts.append(RushModelFactory.piece("box",Vector3(.025,.015,15),Vector3(i*1.5,-.38,1),Color("244048")))
+
 	_batch(showcase,parts,16)
 	_sign(showcase,"RING RUSH",Vector3(0,3.5,-4.25),Color("9eb7b4"))
 	_sign(showcase,"BOXING CLUB",Vector3(0,3.0,-4.23),Color("637b82"))

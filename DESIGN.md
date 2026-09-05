@@ -40,3 +40,10 @@ Extend the existing underground boxing identity: midnight blue surfaces, warm iv
 ### September refinement
 
 Keep the boxing club identity, with a brighter royal-blue upgrade surface (`#163065`) and hue-tinted skill cards. Text determines card height; rank metadata never floats outside its action. Upgrade choices scroll only when the safe height requires it. Wave clear uses centered ivory text on saturated teal (`#147b72`). Floating right-side Fighter / Skills / Shop destinations leave the character dominant; Play occupies the bottom action area above any banner. Gym shows current → next values and a visible coin cost. Skill silhouettes and enemy warnings stay readable even when decorative impact effects are disabled.
+
+
+### Friend playtest 0.2.0
+
+Use six graphical two-column cards in Shop and GYM, with short labels and a direct action. Keep the GYM fight action fixed below the scroll region. Fight selection uses eight icon-labelled mode buttons and a separate footer. Icons size and position from their actual button bounds. Preserve a continuous gym floor behind showroom controls by moving the orthographic camera back along its viewing axis; remove the floor grid at the podium.
+
+Rattle, Shade and Hex add CC0 creature silhouettes with native animations. Hell, Blitz and Boss Rush introduce denser spawning, shorter rests and varied boss patterns. The faster 144 / 156 BPM original battle scores support these modes. Browser text must not depend on a desktop system font for arrows; use portable characters or the vector icon system.

@@ -5,12 +5,24 @@ var tint := Color("4de1c6")
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(32, 32)
+	if custom_minimum_size==Vector2.ZERO:custom_minimum_size = Vector2(32, 32)
 
 func _draw() -> void:
 	var factor := minf(size.x, size.y) / 32.0
 	draw_set_transform(size * 0.5 - Vector2.ONE * 16 * factor, 0, Vector2.ONE * factor)
 	match kind:
+		"skull":
+			line([Vector2(8,25),Vector2(8,21),Vector2(4,17),Vector2(4,9),Vector2(9,3),Vector2(23,3),Vector2(28,9),Vector2(28,17),Vector2(24,21),Vector2(24,25),Vector2(8,25)])
+			draw_circle(Vector2(10,13),3,tint);draw_circle(Vector2(22,13),3,tint)
+			for x in [12,16,20]:line([Vector2(x,22),Vector2(x,29)])
+		"stairs":
+			line([Vector2(3,27),Vector2(3,21),Vector2(11,21),Vector2(11,13),Vector2(19,13),Vector2(19,5),Vector2(29,5)])
+		"timer":
+			draw_arc(Vector2(16,18),11,0,TAU,32,tint,2,true)
+			line([Vector2(11,2),Vector2(21,2)]);line([Vector2(16,2),Vector2(16,7)])
+			line([Vector2(16,10),Vector2(16,18),Vector2(22,18)])
+		"plus":
+			line([Vector2(16,5),Vector2(16,27)]);line([Vector2(5,16),Vector2(27,16)])
 		"right":line([Vector2(12,6),Vector2(22,16),Vector2(12,26)])
 		"play":polygon([Vector2(10,5),Vector2(27,16),Vector2(10,27)])
 		"ad":

@@ -1,4 +1,4 @@
-# Human model and animation credits
+# Fighter model and animation credits
 
 - **Universal Base Characters — Superhero Male and Superhero Female**, by **Quaternius**.
   Official pack and CC0 license declaration: https://quaternius.com/packs/universalbasecharacters.html
@@ -18,3 +18,16 @@ All new arena geometry, UI icons, skill effects and musical compositions/SFX in 
 `crowd_raven.res` and `crowd_titan.res` are offline reductions and pose bakes of the same CC0 female/male bases, with original bone-bound equipment from `game/wardrobe.gd`. They add different enemy silhouettes without live per-enemy rigs.
 
 `custom/` contains two user-supplied FBX files, extracted textures, reduced previews and an unsuccessful retargeting experiment. Their provenance is separate from the CC0 assets above; no CC0 license is asserted for them. They are excluded from both mobile export presets and are not used by the game. See `docs/model-review/README.md` for exact original filenames and compatibility results.
+
+
+## KayKit creature fighters and enemies
+
+**KayKit Character Pack: Skeletons 1.0**, by **Kay Lousberg**. Official source:
+https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0
+
+License: CC0; the original notice is preserved in `kaykit/LICENSE.txt`.
+`Skeleton_Minion`, `Skeleton_Rogue` and `Skeleton_Mage` become Rattle, Shade and Hex. All three keep their own native skeleton and seven compatible animation clips; no humanoid retargeting is involved. The scenes have 41 bones and approximately 5,288 / 5,278 / 4,588 triangles. Their 1,024-pixel atlas and distinct heads, hoods, hats and body proportions remain visible in gameplay.
+
+`tools/prepare_creatures.gd` reduces the source animation libraries; `tools/bake_creatures.gd` bakes shared crowd poses at 24 Hz. Enemy bone, revenant and hexer roles use these three silhouettes. The prepared scenes reference local PNG textures only; source GLBs are excluded from playtest exports. These are modified open assets, not newly sculpted project originals.
+
+The four original music loops can be regenerated with `tools/generate_battle_music.py`: menu 104 BPM, street 138 BPM, general combat 144 BPM, Hell/Boss Rush 156 BPM. Sixteen-bar arrangements include syncopated bass, drums, chord stabs, riffs and fills. Godot engine and dependency license notices are in `assets/licenses/`.

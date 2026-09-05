@@ -7,7 +7,10 @@ const CHARACTERS := [
 	{"id":"titan", "name":"TITAN", "style":"THE EARTHBREAKER", "price":300, "hp":155.0,"damage":29.0,"speed":3.6,"tempo":0.82,"move":"quake","color":Color("ffb45d"),"passive":"Heavy armor. Starts with two Iron guard ranks.","rank":"armor"},
 	{"id":"volt", "name":"VOLT", "style":"THE LIVE WIRE", "price":420, "hp":95.0,"damage":17.0,"speed":4.8,"tempo":0.53,"move":"thunder","color":Color("6dbbff"),"passive":"Punches chain to a second opponent.","rank":"chain"},
 	{"id":"raven", "name":"RAVEN", "style":"THE NIGHT STRIKER", "price":550, "hp":90.0,"damage":23.0,"speed":4.6,"tempo":0.60,"move":"dragon","color":Color("ff6979"),"passive":"Recover health on every knockout.","rank":"leech"},
-	{"id":"sol", "name":"SOL", "style":"THE SUN CHAMPION", "price":700, "hp":105.0,"damage":19.0,"speed":4.4,"tempo":0.56,"move":"meteor","color":Color("ffd66e"),"passive":"Every punch ignites opponents.","rank":"burn"}
+	{"id":"sol", "name":"SOL", "style":"THE SUN CHAMPION", "price":700, "hp":105.0,"damage":19.0,"speed":4.4,"tempo":0.56,"move":"meteor","color":Color("ffd66e"),"passive":"Every punch ignites opponents.","rank":"burn"},
+ {"id":"rattle","name":"RATTLE","style":"THE BONE BRAWLER","price":320,"hp":100.0,"damage":22.0,"speed":4.7,"tempo":.52,"move":"barrage","color":Color("e2d4a1"),"passive":"Fast fists. Starts with Quick combo.","rank":"speed","model":"rattle"},
+ {"id":"shade","name":"SHADE","style":"THE REVENANT","price":480,"hp":90.0,"damage":24.0,"speed":5.2,"tempo":.58,"move":"dragon","color":Color("c5a2ff"),"passive":"Sharp strikes. Starts with Sweet spot.","rank":"crit","model":"shade"},
+ {"id":"hex","name":"HEX","style":"THE STORMCALLER","price":620,"hp":120.0,"damage":17.0,"speed":4.1,"tempo":.66,"move":"thunder","color":Color("9aedcf"),"passive":"Chain lightning from the first punch.","rank":"chain","model":"hex"}
 ]
 const MOVES := [
 	{"id":"barrage","name":"HUNDRED HANDS","price":0,"cooldown":6.0,"detail":"A rapid six-punch combination that tracks the closest opponent.","icon":"fist"},
