@@ -6,9 +6,11 @@ const RING_LIMIT := 6.05
 const PRODUCTS := {"gold_gloves": {"entitlement": "gold_gloves"}}
 const REWARDS := {"training_coins": 60}
 const STAGES := [
-	{"name": "THE UNDERGROUND", "detail": "Find your feet. Claim your first belt.", "boss": "IRON JACK", "tint": Color("39d6c4"), "difficulty": 1.0, "reward": 100},
-	{"name": "NEON DOCKS", "detail": "Faster feet. Harder fists. No easy corners.", "boss": "THE ANCHOR", "tint": Color("a493f2"), "difficulty": 1.25, "reward": 160},
-	{"name": "GOLDEN CROWN", "detail": "The final circuit. Leave as champion.", "boss": "KING COBALT", "tint": Color("ffbe56"), "difficulty": 1.5, "reward": 240}
+	{"name":"THE UNDERGROUND","detail":"A floodlit boxing arena. Win your first belt.","boss":"IRON JACK","tint":Color("39d6c4"),"difficulty":1.0,"reward":100},
+	{"name":"NEON SIEGE","detail":"Street crews surround you beneath the neon signs.","boss":"THE COLLECTOR","tint":Color("b397ff"),"difficulty":1.12,"reward":140},
+	{"name":"SKYLINE ROOFTOP","detail":"Fight above the city on a rooftop helipad.","boss":"NIGHT HAWK","tint":Color("68cfff"),"difficulty":1.22,"reward":180},
+	{"name":"IRON FOUNDRY","detail":"A furnace hall. Watch for the pressure vents.","boss":"THE FOREMAN","tint":Color("ff9960"),"difficulty":1.32,"reward":220},
+	{"name":"DAWN TEMPLE","detail":"A mountain courtyard. The final master awaits.","boss":"THE SENTINEL","tint":Color("ffd277"),"difficulty":1.42,"reward":280}
 ]
 const ABILITIES := [
 	{"id": "power", "title": "Heavy hands", "detail": "+25% punch damage per rank.", "tag": "POWER", "max": 4, "icon": "fist"},

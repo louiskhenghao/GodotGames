@@ -32,7 +32,7 @@ func run():
 		samples.append(float(now-last)/1000.0)
 		last=now
 	samples.sort()
-	var metrics := {"stress":stress,"median_frame_ms":samples[90],"p95_frame_ms":samples[171],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"primitives":Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),"enemies":game.enemies.size(),"nodes":Performance.get_monitor(Performance.OBJECT_NODE_COUNT)}
+	var metrics := {"viewport":str(root.get_texture().get_size()),"stress":stress,"median_frame_ms":samples[90],"p95_frame_ms":samples[171],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"primitives":Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),"enemies":game.enemies.size(),"nodes":Performance.get_monitor(Performance.OBJECT_NODE_COUNT)}
 	print(JSON.stringify(metrics))
 	var file := FileAccess.open(OS.get_cmdline_user_args()[0],FileAccess.WRITE)
 	file.store_string(JSON.stringify(metrics,"  "))

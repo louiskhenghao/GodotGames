@@ -94,6 +94,7 @@ func run() -> void:
 	game.set_physics_process(false)
 	await process_frame
 	check(game.mode == "home" and game.enemy_pool.size() == 48 and game.enemies.is_empty(), "home scene loads")
+	game.run_mode = "classic"
 	game.start_run()
 	var touch := InputEventScreenTouch.new()
 	touch.index = 0
@@ -202,6 +203,7 @@ func expanded_checks(game: Node3D, core: Node) -> void:
 	var recycled = game._spawn(Vector3(0,0,-1), "brute")
 	check(recycled.get_instance_id() == pooled_id and recycled.burn == 0 and recycled.frost == 0, "reused actor resets status effects")
 	check(recycled.role == "brute" and recycled.max_health > 60, "brute has distinct stats")
+	game.technique_id = "quake"
 	game.special_charge = 99
 	before = recycled.health
 	game.special()
@@ -232,6 +234,7 @@ func expanded_checks(game: Node3D, core: Node) -> void:
 	var previous_ranks: Dictionary = game.ranks.duplicate()
 	game.choose_ability("nonexistent")
 	check(game.mode == "upgrade" and game.ranks == previous_ranks, "unoffered skill cannot mutate a build")
+	game.rerolls = 1
 	game.reroll()
 	var rolled: Array = game.options.duplicate()
 	game.reroll()
@@ -255,9 +258,9 @@ func expanded_checks(game: Node3D, core: Node) -> void:
 	check(RushProgress.recover(core.save)==21 and core.save.data.coins==initial+21, "checkpoint recovery banks earned coins")
 	check(RushProgress.recover(core.save)==0 and core.save.data.coins==initial+21, "checkpoint cannot recover twice")
 	game.go_home()
-	var a: Dictionary = RushModelFactory.fighter("rookie")
-	var b: Dictionary = RushModelFactory.fighter("rookie")
-	check(a.head == b.head and a.head.get_surface_count()==1, "fighters share baked single-surface meshes")
+	var a: Mesh = game.enemy_pool[0].crowd_library.clips.Idle[0]
+	var b: Mesh = game.enemy_pool[1].crowd_library.clips.Idle[0]
+	check(a == b and a.get_surface_count()==2, "crowds share the actual two-surface humanoid pose meshes")
 	game.start_run()
 	game.set_physics_process(false)
 	await process_frame

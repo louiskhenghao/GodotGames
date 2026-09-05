@@ -9,6 +9,8 @@ var cursor := 0
 var ring_cursor := 0
 var text_cursor := 0
 var enabled := true
+var cracks: MultiMeshInstance3D
+var crack_life := 0.0
 var instanced: MultiMeshInstance3D
 
 func _ready() -> void:
@@ -27,6 +29,18 @@ func _ready() -> void:
 	instanced.multimesh.custom_aabb = AABB(Vector3(-15, -2, -15), Vector3(30, 15, 30))
 	instanced.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(instanced)
+	cracks = MultiMeshInstance3D.new()
+	cracks.multimesh = MultiMesh.new()
+	cracks.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	cracks.multimesh.use_colors = true
+	var crack_mesh := BoxMesh.new()
+	crack_mesh.size = Vector3.ONE
+	crack_mesh.material = material
+	cracks.multimesh.mesh = crack_mesh
+	cracks.multimesh.instance_count = 48
+	cracks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cracks.visible = false
+	add_child(cracks)
 	for i in capacity:
 		particles.append({"position": Vector3.ZERO, "velocity": Vector3.ZERO, "life": 0.0})
 		_hide(i)
@@ -61,6 +75,8 @@ func _hide(index: int) -> void:
 	instanced.multimesh.set_instance_transform(index, Transform3D(Basis.IDENTITY, Vector3(0, -100, 0)))
 
 func clear() -> void:
+	crack_life = 0
+	cracks.visible = false
 	for i in capacity:
 		particles[i].life = 0
 		_hide(i)
@@ -95,6 +111,7 @@ func ring(origin: Vector3, color: Color, radius: float, duration: float = 0.45) 
 	if not enabled: return
 	var p := rings[ring_cursor]
 	ring_cursor = (ring_cursor + 1) % rings.size()
+	p.node.rotation = Vector3.ZERO
 	p.node.position = origin + Vector3.UP * 0.16
 	p.node.material_override.albedo_color = color
 	p.node.visible = true
@@ -114,6 +131,8 @@ func damage_number(at: Vector3, value: int, critical: bool = false) -> void:
 	p.life = 0.6
 
 func _process(delta: float) -> void:
+	crack_life = maxf(0,crack_life-delta)
+	cracks.visible = crack_life > 0 and enabled
 	for i in capacity:
 		var p := particles[i]
 		if p.life <= 0: continue
@@ -136,3 +155,35 @@ func _process(delta: float) -> void:
 		p.life -= delta
 		p.node.position.y += delta * 1.2
 		p.node.visible = p.life > 0
+
+func quake(origin: Vector3, color: Color, radius: float = 4.5) -> void:
+	if not enabled: return
+	crack_life = 1.1
+	for ray in 8:
+		var previous := origin + Vector3.UP*.09
+		for segment in 6:
+			var angle := ray*TAU/8 + sin(segment*2.7+ray)*.12
+			var next := origin + Vector3(cos(angle),0,sin(angle)) * (segment+1)*radius/6 + Vector3.UP*.09
+			var direction := next-previous
+			var basis := Basis(Vector3.UP,atan2(-direction.x,-direction.z)).scaled(Vector3(.06,.012,direction.length()))
+			cracks.multimesh.set_instance_transform(ray*6+segment,Transform3D(basis,(previous+next)*.5))
+			cracks.multimesh.set_instance_color(ray*6+segment,color)
+			previous = next
+	ring(origin,color,radius,.55)
+	ring(origin,Color("f3e9c6"),radius*.7,.35)
+	burst(origin+Vector3.UP*.15,Color("c19b70"),48,1.6)
+
+func cyclone(origin: Vector3, color: Color, radius: float = 2.8) -> void:
+	if not enabled: return
+	for height in [.2,.8,1.4]:
+		var index := ring_cursor
+		ring(origin+Vector3.UP*height,color,radius,.28)
+		rings[index].node.rotation.z = .10
+	for i in 16:
+		var angle := i*TAU/16
+		var p := particles[cursor]
+		p.position = origin+Vector3(cos(angle)*radius,.8,sin(angle)*radius)
+		p.velocity = Vector3(-sin(angle)*4,2,cos(angle)*4)
+		p.life = .28
+		instanced.multimesh.set_instance_color(cursor,color)
+		cursor = (cursor+1)%capacity

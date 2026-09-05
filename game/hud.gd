@@ -20,6 +20,7 @@ var combo_text: Label
 var hint: Label
 var message: Label
 var dash_button: Button
+var technique_button: Button
 var special_button: Button
 var buttons: Array[Button] = []
 var current_page := "home"
@@ -214,29 +215,29 @@ func home() -> void:
 	var record := label("BEST  %d KO" % int(MobileCore.save.data.progress.get("best_kos", 0)), 18, TEAL, true)
 	top.add_child(record)
 	var name_plate := column(0.61, 0.69)
-	var title := label("THE CHALLENGER", 29, PAPER, true)
+	var title := label(game.selected_character().name + "  /  " + game.selected_character().style, 27, PAPER, true)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_plate.add_child(title)
-	var equipment := label("GOLD EDITION" if MobileCore.save.data.entitlements.get("gold_gloves", false) else "CYAN CORNER  /  READY TO FIGHT", 13, TEAL)
+	var equipment := label("GOLD EDITION" if MobileCore.save.data.entitlements.get("gold_gloves", false) else RushRoster.move(game.selected_move()).name + "  /  READY TO FIGHT", 13, TEAL)
 	equipment.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_plate.add_child(equipment)
 	var bottom := column(0.705, 0.96)
 	var stage_row := row()
 	bottom.add_child(stage_row)
-	var stage_button := button("CIRCUIT %d  /  %s" % [game.stage+1, RushBalance.STAGES[game.stage].name], circuits, false, "crown")
-	stage_button.add_theme_font_size_override("font_size", 21)
+	var stage_button := button(RushWaveDirector.mode_info(game.run_mode).name + "  /  " + RushBalance.STAGES[game.stage].name, circuits, false, "crown")
+	stage_button.add_theme_font_size_override("font_size", 19)
 	stage_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stage_button.custom_minimum_size.y = 51
 	stage_row.add_child(stage_button)
-	var play := button("ENTER THE RING", game.start_run, true, "fist")
+	var play := button("RESUME SAVED FIGHT" if game.has_resume() else "START THE FIGHT", game.resume_saved_run if game.has_resume() else game.start_run, true, "fist")
 	play.custom_minimum_size.y = 68
 	play.add_theme_font_size_override("font_size", 29)
 	bottom.add_child(play)
 	var nav := row()
 	bottom.add_child(nav)
-	for entry in [["GYM",training,"fist"],["SKILLS",skills,"book"],["LOCKER",shop,"crown"],["",settings,"gear"]]:
+	for entry in [["FIGHTERS",fighters,"fist"],["MOVES",moves,"bolt"],["GYM",training,"crown"],["",settings,"gear"]]:
 		var b := button(entry[0],entry[1],false,entry[2])
-		b.add_theme_font_size_override("font_size",18)
+		b.add_theme_font_size_override("font_size",17)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		if entry[0].is_empty(): b.custom_minimum_size.x = 54; b.size_flags_horizontal = Control.SIZE_SHRINK_END
 		nav.add_child(b)
@@ -257,6 +258,18 @@ func bar(color: Color, height: int = 9) -> ProgressBar:
 
 func playing() -> void:
 	clear("playing")
+	var fade := TextureRect.new()
+	var texture := GradientTexture2D.new()
+	var gradient := Gradient.new()
+	gradient.colors=PackedColorArray([Color(INK,0),Color(INK,.98)])
+	texture.gradient=gradient
+	texture.fill_from=Vector2(.5,0)
+	texture.fill_to=Vector2(.5,.8)
+	fade.texture=texture
+	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fade.anchor_top=.72
+	fade.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	screen.add_child(fade)
 	var top := column(0.04, 0.24)
 	var header := row()
 	top.add_child(header)
@@ -281,7 +294,7 @@ func playing() -> void:
 	top.add_child(boss_title)
 	boss_bar = bar(Color("f57e6a"),6)
 	top.add_child(boss_bar)
-	var bottom := column(0.79,0.96)
+	var bottom := column(0.78,0.97)
 	hint = label("Drag to move. Punches are automatic.",15,MUTED)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(hint)
@@ -298,17 +311,22 @@ func playing() -> void:
 			shown += 1
 	var actions := row()
 	bottom.add_child(actions)
-	dash_button = button("DASH  /  SPACE",game.dash,false,"dash")
+	dash_button = button("DODGE",game.dash,false)
 	dash_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dash_button.custom_minimum_size.y = 70
 	dash_button.add_theme_font_size_override("font_size",21)
 	actions.add_child(dash_button)
-	special_button = button("SPECIAL  /  E",game.special,true,"nova")
+	technique_button = button("TECHNIQUE",game.technique,false)
+	technique_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	technique_button.custom_minimum_size.y=70
+	technique_button.add_theme_font_size_override("font_size",21)
+	actions.add_child(technique_button)
+	special_button = button("ULTIMATE",game.special,true)
 	special_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	special_button.custom_minimum_size.y = 70
 	special_button.add_theme_font_size_override("font_size",21)
 	actions.add_child(special_button)
-	var help := label("Dodge through danger. Charge your special with knockouts.",13,MUTED)
+	var help := label("SPACE  Dodge     Q  Technique     E  Ultimate" if not touch_device else "Dodge red warnings. Techniques recharge automatically.",13,MUTED)
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(help)
 	update_stats()
@@ -322,7 +340,7 @@ func _block_actions() -> void:
 
 func update_stats() -> void:
 	if not is_instance_valid(stats): return
-	stats.text = "%02d:%02d    WAVE %d    %d KO" % [int(game.remaining)/60,int(game.remaining)%60,game.wave,game.kills]
+	stats.text = "%02d:%02d    WAVE %d    %d KO" % [int(game.remaining)/60,int(game.remaining)%60,game.wave,game.kills] if game.run_mode == "classic" else "WAVE %d / %d    %d KO" % [game.wave,game.director.target,game.kills]
 	hp_text.text = "HEALTH  %d / %d     LEVEL %d" % [ceili(game.hp),int(game.max_hp),game.level]
 	combo_text.text = "%d COMBO" % game.combo if game.combo > 1 else ""
 	health_bar.value = clampf(game.hp/game.max_hp*100,0,100)
@@ -331,13 +349,18 @@ func update_stats() -> void:
 	boss_title.visible = boss_alive
 	boss_bar.visible = boss_alive
 	if boss_alive:
-		boss_title.text = RushBalance.STAGES[game.stage].boss + ("  /  OVERTIME" if game.remaining <= 0 else "")
+		boss_title.text = RushBalance.STAGES[game.stage].boss + ("  /  OVERTIME" if game.run_mode == "classic" and game.remaining <= 0 else "")
 		boss_bar.value = game.boss.health / game.boss.max_health * 100
 	dash_button.disabled = game.dash_clock > 0
-	dash_button.text = "DASH  %.1fs" % game.dash_clock if game.dash_clock > 0 else ("DASH" if touch_device else "DASH  /  SPACE")
+	dash_button.text = "DODGE %.1f" % game.dash_clock if game.dash_clock > 0 else "DODGE"
+	technique_button.disabled = game.technique_clock > 0
+	technique_button.text = "SKILL %.1f" % game.technique_clock if game.technique_clock > 0 else "TECHNIQUE"
 	special_button.disabled = game.special_charge < 100
-	special_button.text = "SPECIAL  %d%%" % game.special_charge if game.special_charge < 100 else ("UNLEASH" if touch_device else "UNLEASH  /  E")
-	if game.elapsed > 6: hint.text = "%d SKILLS EQUIPPED     %d COINS EARNED" % [game.ranks.size(),game.run_coins]
+	special_button.text = "ULT %d%%" % game.special_charge if game.special_charge < 100 else "UNLEASH"
+	if game.run_mode != "classic" and game.director.clearing:
+		hint.text = "WAVE CLEAR  /  NEXT WAVE IN %.1fs" % maxf(0,game.director.rest)
+	else:
+		hint.text = RushRoster.move(game.technique_id).name + "   ·   %d COINS" % game.run_coins
 
 func page(title: String, detail: String, page_name: String, back: Callable = Callable()) -> VBoxContainer:
 	clear(page_name)
@@ -418,19 +441,19 @@ func paused() -> void:
 	col.add_child(body_text("Move: drag or WASD / arrows\nDash: Space or the dash button\nSpecial: E when fully charged\nRed circles warn of incoming attacks.",18))
 
 func result(won: bool, saved: bool) -> void:
-	var col := page("BELT EARNED." if won else "FIGHT ANOTHER DAY.", "Circuit %d · %s" % [game.stage+1,RushBalance.STAGES[game.stage].name],"result")
+	var col := page("BELT EARNED." if won else "FIGHT ANOTHER DAY.", RushWaveDirector.mode_info(game.run_mode).name + " · " + RushBalance.STAGES[game.stage].name,"result")
 	var emblem := icon("crown" if won else "fist",AMBER,72)
 	emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(emblem)
 	var total := label("%d KNOCKOUTS" % game.kills,48,PAPER,true)
 	total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(total)
-	var info := label("LEVEL %d    /    %ds SURVIVED" % [game.level,int(game.elapsed)],17,MUTED)
+	var info := label("%d WAVES CLEARED    /    %ds" % [game.completed_waves,int(game.elapsed)],17,MUTED)
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(info)
 	spacer(col)
 	col.add_child(label("%d COINS %s" % [game.run_coins,"BANKED" if saved else "AWAITING SAVE"],30,AMBER,true))
-	if won: col.add_child(body_text("Victory bonus included. " + ("The next circuit is now available." if game.stage < 2 else "You have conquered all three circuits."),17))
+	if won: col.add_child(body_text("Victory bonus included. " + ("The next circuit is now available." if game.stage < 4 else "You have conquered the final venue."),17))
 	if saved:
 		col.add_child(button("ANOTHER ROUND",game.start_run,true,"fist"))
 		col.add_child(button("RETURN TO GYM",game.go_home))
@@ -439,20 +462,69 @@ func result(won: bool, saved: bool) -> void:
 		col.add_child(button("RETRY SAVING REWARD",func():game.finish_run(won),true))
 
 func circuits() -> void:
-	var col := page("THE CIRCUIT", "Survive the crowd. Defeat the champion. Earn the next belt.","circuits",home)
-	var unlocked := clampi(int(MobileCore.save.data.progress.get("unlocked_stage",0)),0,2)
-	for i in 3:
+	var col := page("CHOOSE YOUR FIGHT", "Pick a challenge and a venue. Every fifth wave brings a champion.","circuits",home)
+	if game.has_resume():
+		col.add_child(button("RESUME SAVED FIGHT",game.resume_saved_run,true,"fist"))
+		col.add_child(button("BANK SAVED FIGHT & START FRESH",game.bank_saved_run,false,"coin"))
+	col.add_child(label("CHALLENGE MODES",28,TEAL,true))
+	for entry in RushWaveDirector.MODES:
+		col.add_child(button(entry.name,func():
+			game.run_mode=entry.id
+			if entry.id=="ladder": game.stage=0
+			circuits(),game.run_mode==entry.id,"crown"))
+		col.add_child(body_text(entry.detail + "  Best: %d waves." % int(MobileCore.save.data.progress.get("best_wave_"+entry.id,0)),16))
+	col.add_child(label("VENUES",28,TEAL,true))
+	var unlocked := clampi(int(MobileCore.save.data.progress.get("unlocked_stage",0)),0,4)
+	for i in RushBalance.STAGES.size():
 		var entry: Dictionary = RushBalance.STAGES[i]
-		var locked := i > unlocked
+		var locked: bool = i > unlocked or game.run_mode == "ladder"
 		var b := button("%d   %s" % [i+1,entry.name],func():game.select_stage(i),i==game.stage,"lock" if locked else "crown")
 		b.disabled = locked
 		b.add_theme_font_size_override("font_size",25)
 		col.add_child(b)
-		col.add_child(body_text("Win the previous circuit to unlock." if locked else entry.detail + "\nChampion: " + entry.boss + "  ·  Bonus: %d coins" % entry.reward,16))
+		col.add_child(body_text(("Ladder visits this venue automatically. " if game.run_mode=="ladder" else ("Win the previous venue to unlock. " if locked else "")) + entry.detail,16))
+	col.add_child(button("READY TO FIGHT",home,true,"fist"))
+
+func fighters() -> void:
+	var col := page("THE FIGHTERS", "%d coins. Unlock a fighter and their signature technique together." % int(MobileCore.save.data.coins),"fighters",home)
+	for c in RushRoster.CHARACTERS:
+		var owned := RushRoster.owned(MobileCore.save,"character",c.id)
+		var selected: bool = game.selected_character().id==c.id
+		col.add_child(label(c.name+" / "+c.style,29,c.color,true))
+		col.add_child(body_text("%d HP   ·   %d POWER   ·   %.1f SPEED   ·   %.2fs PUNCH" % [c.hp,c.damage,c.speed,c.tempo],15))
+		col.add_child(body_text(c.passive+"
+"+RushRoster.move(c.move).name+" — "+RushRoster.move(c.move).detail,17))
+		var b := button("EQUIPPED" if selected else ("SELECT FIGHTER" if owned else "UNLOCK / %d COINS"%c.price),func():
+			if not RushRoster.unlock(MobileCore.save,"character",c.id): toast("Unable to unlock. Check your coins and storage."); return
+			if not RushRoster.equip(MobileCore.save,"character",c.id): toast("Unable to save selection."); return
+			game.go_home()
+			fighters(),not selected,"fist")
+		b.disabled=selected or (not owned and MobileCore.save.data.coins<c.price)
+		col.add_child(b)
+		spacer(col,16)
+
+func moves() -> void:
+	var col := page("SIGNATURE MOVES", "%d coins. Equip any owned technique on your selected fighter." % int(MobileCore.save.data.coins),"moves",home)
+	col.add_child(body_text("Q / TECHNIQUE uses a cooldown. E / ULTIMATE unleashes an amplified version when the meter is full.",17,TEAL))
+	for m in RushRoster.MOVES:
+		var owned := RushRoster.owned(MobileCore.save,"move",m.id)
+		var selected: bool = game.selected_move()==m.id
+		col.add_child(label(m.name,30,PAPER,true))
+		col.add_child(body_text(m.detail+"  Cooldown: %.1fs."%m.cooldown,17))
+		var b := button("EQUIPPED" if selected else ("EQUIP TECHNIQUE" if owned else "UNLOCK / %d COINS"%m.price),func():
+			if not RushRoster.unlock(MobileCore.save,"move",m.id): toast("Unable to unlock. Check your coins and storage."); return
+			if not RushRoster.equip(MobileCore.save,"move",m.id): toast("Unable to save selection."); return
+			game.technique_id=m.id
+			moves(),not selected,m.icon)
+		b.disabled=selected or (not owned and MobileCore.save.data.coins<m.price)
+		col.add_child(b)
 		spacer(col,10)
+	col.add_child(button("PASSIVE SKILL PLAYBOOK",skills,false,"book"))
 
 func training() -> void:
 	var col := page("THE GYM", "Permanent training. Your balance: %d coins." % MobileCore.save.data.coins,"training",home)
+	col.add_child(button("PASSIVE SKILL PLAYBOOK",skills,false,"book"))
+	col.add_child(button("COSMETIC STORE",shop,false,"crown"))
 	for entry in RushBalance.TRAINING:
 		var level := clampi(int(MobileCore.save.data.progress.get(entry.id,0)),0,5)
 		var cost := RushBalance.training_cost(level)
@@ -467,11 +539,11 @@ func training() -> void:
 
 func skills() -> void:
 	var in_run: bool = game.mode == "paused"
-	var col := page("YOUR BUILD" if in_run else "THE PLAYBOOK", "18 stackable skills. Two active moves. Find your fighting style.","skills",paused if in_run else home)
+	var col := page("YOUR BUILD" if in_run else "THE PLAYBOOK", "18 stackable skills. Combine them with your signature technique. Find your fighting style.","skills",paused if in_run else home)
 	if in_run:
 		col.add_child(body_text("Damage %.0f   ·   Reach %.1fm   ·   Punch every %.2fs" % [game.damage,game.reach,game.cooldown],17,TEAL))
 	col.add_child(label("ACTIVE MOVES",28,PAPER,true))
-	col.add_child(body_text("DASH / SPACE — slip through danger with brief invulnerability.\nSPECIAL / E — fill the meter with knockouts, then unleash a powerful shockwave.",17))
+	col.add_child(body_text("DASH / SPACE — slip through danger with brief invulnerability.\nTECHNIQUE / Q — your equipped move, recharging on a cooldown.\nULTIMATE / E — an amplified version, charged with knockouts.",17))
 	spacer(col)
 	for entry in RushBalance.ABILITIES:
 		if in_run and game.rank_of(entry.id)==0: continue
@@ -500,7 +572,7 @@ func shop() -> void:
 
 func settings() -> void:
 	var col := page("MAKE IT YOURS", "Tune the experience for your device.","settings",paused if game.mode=="paused" else home)
-	for entry in [["effects","IMPACT EFFECTS"],["haptics","HAPTIC FEEDBACK"],["sound","SOUND EFFECTS"],["low_quality","BATTERY SAVER"]]:
+	for entry in [["effects","IMPACT EFFECTS"],["haptics","HAPTIC FEEDBACK"],["sound","SOUND EFFECTS"],["music","MUSIC"],["low_quality","BATTERY SAVER"]]:
 		var key: String = entry[0]
 		var enabled: bool = MobileCore.save.data.settings.get(key,key!="low_quality")
 		col.add_child(button(entry[1]+"  /  "+("ON" if enabled else "OFF"),func():
@@ -510,7 +582,7 @@ func settings() -> void:
 			else: toast("Could not save settings. Free storage and try again.")))
 	col.add_child(body_text("Battery saver disables real-time shadows, the audience and anti-aliasing. Gameplay and skill effects are unchanged.",16))
 	spacer(col)
-	col.add_child(body_text("Touch: drag to move; use the two skill buttons.\nKeyboard: WASD / arrows, Space to dash, E for special, Esc to pause.\nRuns pause when the app loses focus.",17))
+	col.add_child(body_text("Touch: drag to move; use dodge, technique and ultimate.\nKeyboard: WASD / arrows, Space to dodge, Q for technique, E for ultimate, Esc to pause.\nRuns pause when the app loses focus.",17))
 
 func _commerce_completed(_success: bool,text: String) -> void:
 	game.player.set_gold(MobileCore.save.data.entitlements.get("gold_gloves",false))

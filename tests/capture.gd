@@ -36,11 +36,27 @@ func capture() -> void:
 	game.vfx._process(0.05)
 	game.hud.update_stats()
 	await snap("gameplay")
+	game.technique_id="quake"
+	game.vfx.quake(game.player.position,Color("ffd182"),4.8)
+	game.vfx._process(.22)
+	await snap("earthquake")
+	for i in range(1,5):
+		game.stage=i
+		game.arena.set_stage(i)
+		for enemy in game.enemies: enemy.animate(.15,true)
+		game.hud.playing()
+		await snap("venue-"+str(i))
 	game.xp=game.xp_needed
 	game._level_up()
 	await create_timer(0.22).timeout
 	await snap("upgrade")
 	game.go_home()
+	game.hud.fighters()
+	await create_timer(.22).timeout
+	await snap("fighters")
+	game.hud.moves()
+	await create_timer(.22).timeout
+	await snap("moves")
 	game.hud.training()
 	await create_timer(0.22).timeout
 	await snap("training")

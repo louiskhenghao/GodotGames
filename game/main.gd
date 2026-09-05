@@ -16,6 +16,23 @@ var podium: Node3D
 var camera_home := Vector3(16, 22, 16)
 var mode := "home"
 var stage := 0
+var restoring := false
+var run_mode := "sprint"
+var director := RushWaveDirector.new()
+var technique_clock := 0.0
+var cyclone_clock := 0.0
+var cyclone_tick := 0.0
+var projectile_time := 0.0
+var projectile_position := Vector3.ZERO
+var projectile_direction := Vector3.ZERO
+var projectile_hits: Array[int] = []
+var skill_multiplier := 1.0
+var barrage_time := 0.0
+var barrage_tick := 0.0
+var hit_stop := 0.0
+var completed_waves := 0
+var music: AudioStreamPlayer
+var technique_id := "quake"
 var hp := 100.0
 var max_hp := 100.0
 var damage := 18.0
@@ -56,7 +73,6 @@ var neighbor_grid: Dictionary = {}
 
 func _ready() -> void:
 	MobileCore.configure_commerce(RushBalance.PRODUCTS, RushBalance.REWARDS)
-	for kind in ["hero", "rookie", "runner", "brute", "boss"]: RushModelFactory.fighter(kind)
 	arena = RushArena.new()
 	add_child(arena)
 	camera = Camera3D.new()
@@ -68,6 +84,9 @@ func _ready() -> void:
 	add_child(vfx)
 	audio = CoreAudioPool.new()
 	add_child(audio)
+	music = AudioStreamPlayer.new()
+	add_child(music)
+	music.volume_db = -15
 	player = RushBoxer.new()
 	add_child(player)
 	player.build(true)
@@ -102,7 +121,7 @@ func _ready() -> void:
 	hud.game = self
 	add_child(hud)
 	apply_settings()
-	var recovered := RushProgress.recover(MobileCore.save)
+	var recovered := 0 if has_resume() else RushProgress.recover(MobileCore.save)
 	go_home()
 	if MobileCore.save.unsupported_version: hud.toast("This save needs a newer game version. Progress is read-only.")
 	elif recovered > 0: hud.toast("Recovered %d coins from your interrupted run." % recovered)
@@ -138,6 +157,7 @@ func _build_podium() -> void:
 func apply_settings() -> void:
 	vfx.enabled = MobileCore.save.data.settings.get("effects", true)
 	audio.enabled = MobileCore.save.data.settings.get("sound", true)
+	if music != null: music.volume_db = -15 if MobileCore.save.data.settings.get("music",true) else -80
 	var low: bool = MobileCore.save.data.settings.get("low_quality", false)
 	arena.set_quality(low)
 	get_viewport().msaa_3d = Viewport.MSAA_DISABLED if low else Viewport.MSAA_2X
@@ -145,9 +165,9 @@ func apply_settings() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		if mode == "playing":
+		if mode in ["playing","paused","upgrade"]:
 			checkpoint()
-			pause_run()
+			if mode == "playing": pause_run()
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if mode in ["playing", "paused", "upgrade"]: checkpoint()
 		get_tree().quit()
@@ -159,6 +179,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		elif mode == "paused": resume_run()
 	elif event.keycode == KEY_SPACE: dash()
 	elif event.keycode == KEY_E: special()
+	elif event.keycode == KEY_Q: technique()
 
 func _clear_combat() -> void:
 	for enemy in enemies:
@@ -169,13 +190,19 @@ func _clear_combat() -> void:
 	enemies.clear()
 	pickups.clear()
 	boss = null
+	cyclone_clock = 0
+	barrage_time = 0
+	projectile_time = 0
+	hit_stop = 0
 	vfx.clear()
 
 func go_home() -> void:
 	mode = "home"
 	_clear_combat()
+	player.set_character(selected_character().id)
+	technique_id = selected_move()
 	player.position = Vector3.ZERO
-	player.scale = Vector3.ONE * 1.85
+	player.scale *= 1.9
 	player.face(Vector3(0.6, 0, 1))
 	player.set_gold(MobileCore.save.data.entitlements.get("gold_gloves", false))
 	podium.visible = true
@@ -183,24 +210,29 @@ func go_home() -> void:
 	# Lights and environment still affect the showroom while arena geometry is hidden.
 	camera.position = Vector3(5, 3.7, 8)
 	camera.look_at(Vector3(0, 1.75, 0))
-	camera.position -= camera.basis.y * 0.85
+	camera.position -= camera.basis.y * 1.05
 	_frame_showroom()
+	_play_music("menu")
 	hud.home()
 
 func select_stage(index: int) -> void:
-	var unlocked := clampi(int(MobileCore.save.data.progress.get("unlocked_stage", 0)), 0, 2)
+	var unlocked := clampi(int(MobileCore.save.data.progress.get("unlocked_stage", 0)), 0, 4)
 	if mode != "home" or index < 0 or index > unlocked: return
 	stage = index
 	hud.home()
 
 func start_run() -> void:
+	if has_resume() and not restoring:
+		hud.toast("Resume your saved fight, or bank it from the challenge menu.")
+		return
 	if MobileCore.save.unsupported_version:
 		hud.toast("Update the game to use this newer save. Your file has been preserved.")
 		return
 	if mode not in ["home", "result"] or not MobileCore.commerce.pending.is_empty(): return
+	if run_mode == "ladder": stage = 0
 	if stage > int(MobileCore.save.data.progress.get("unlocked_stage", 0)): return
 	if mode == "result" and not MobileCore.save.data.transactions.has(run_id): return
-	if MobileCore.save.data.progress.has("pending_run") and RushProgress.recover(MobileCore.save) < 0:
+	if not restoring and MobileCore.save.data.progress.has("pending_run") and RushProgress.recover(MobileCore.save) < 0:
 		hud.toast("Save your previous reward first. Free storage and try again.")
 		return
 	_clear_combat()
@@ -211,13 +243,15 @@ func start_run() -> void:
 	camera.position = camera_home
 	camera.look_at(Vector3.ZERO)
 	camera.size = 21.5
-	player.configure("hero")
-	max_hp = 100 + int(MobileCore.save.data.progress.get("health", 0)) * 10
+	var fighter := selected_character()
+	player.set_character(fighter.id)
+	technique_id = selected_move()
+	max_hp = fighter.hp + int(MobileCore.save.data.progress.get("health", 0)) * 10
 	hp = max_hp
-	damage = 18 + int(MobileCore.save.data.progress.get("power", 0)) * 3
+	damage = fighter.damage + int(MobileCore.save.data.progress.get("power", 0)) * 3
 	reach = 2.0
-	move_speed = 4.3
-	cooldown = 0.65
+	move_speed = fighter.speed
+	cooldown = fighter.tempo
 	attack_clock = 0
 	spawn_clock = 0.2
 	elapsed = 0
@@ -233,11 +267,16 @@ func start_run() -> void:
 	orbit_clock = 0
 	shake = 0
 	ranks.clear()
-	rerolls = 1
+	ranks[fighter.rank] = 2 if fighter.id == "titan" else 1
+	if fighter.rank == "feet": move_speed *= 1.12
+	rerolls = 2
+	technique_clock = 0
+	completed_waves = 0
+	director.begin(run_mode)
 	dash_clock = 0
 	dash_time = 0
 	invulnerable = 0
-	special_charge = minf(50, int(MobileCore.save.data.progress.get("charge", 0)) * 10)
+	special_charge = minf(100, 35 + int(MobileCore.save.data.progress.get("charge", 0)) * 10)
 	combo = 0
 	combo_clock = 0
 	boss_spawned = false
@@ -247,12 +286,13 @@ func start_run() -> void:
 	run_id = "run:" + Crypto.new().generate_random_bytes(16).hex_encode()
 	player.position = Vector3.ZERO
 	player.set_gold(MobileCore.save.data.entitlements.get("gold_gloves", false))
-	checkpoint()
+	_play_music("fight" if stage != 1 else "street")
+	if not restoring: checkpoint()
 	hud.playing()
 
 func checkpoint() -> void:
 	if not run_id.is_empty():
-		if not RushProgress.checkpoint(MobileCore.save, run_id, run_coins, stage, kills):
+		if not RushProgress.checkpoint(MobileCore.save, run_id, run_coins, stage, kills, RushRunSnapshot.capture(self)):
 			hud.toast("Could not save checkpoint. Free storage and finish the round to retry.")
 
 func pause_run() -> void:
@@ -271,7 +311,7 @@ func finish_run(won: bool) -> void:
 		result_won = won
 		if won: run_coins += int(RushBalance.STAGES[stage].reward)
 	mode = "result"
-	var saved := RushProgress.settle(MobileCore.save, run_id, run_coins, stage, kills, result_won)
+	var saved := RushProgress.settle(MobileCore.save, run_id, run_coins, stage, kills, result_won, run_mode, completed_waves)
 	hud.result(result_won, saved)
 
 func _process(delta: float) -> void:
@@ -288,9 +328,21 @@ func _physics_process(delta: float) -> void:
 
 func _simulate(delta: float) -> void:
 	if mode != "playing": return
+	if hp <= 0:
+		finish_run(false)
+		return
+	if hit_stop > 0:
+		hit_stop = maxf(0,hit_stop-delta)
+		return
 	elapsed += delta
-	remaining = maxf(0, RushBalance.ROUND_SECONDS - elapsed)
-	wave = mini(6, 1 + int(elapsed / 15))
+	if run_mode == "classic":
+		remaining = maxf(0, RushBalance.ROUND_SECONDS - elapsed)
+		wave = mini(6, 1 + int(elapsed / 15))
+	else:
+		wave = director.number
+		remaining = elapsed
+		if _advance_waves(delta): return
+	technique_clock = maxf(0,technique_clock-delta)
 	invulnerable = maxf(0, invulnerable - delta)
 	dash_clock = maxf(0, dash_clock - delta)
 	dash_time = maxf(0, dash_time - delta)
@@ -302,24 +354,40 @@ func _simulate(delta: float) -> void:
 	if checkpoint_clock <= 0:
 		checkpoint_clock = 15
 		checkpoint()
-	if elapsed >= 75 and not boss_spawned: _spawn_boss()
-	if remaining <= 0 and boss_defeated:
-		finish_run(true)
-		return
-	if elapsed >= 120:
-		finish_run(false)
-		return
+	if run_mode == "classic":
+		if elapsed >= 75 and not boss_spawned: _spawn_boss()
+		if remaining <= 0 and boss_defeated:
+			completed_waves = 6
+			finish_run(true)
+			return
+		if elapsed >= 120:
+			finish_run(false)
+			return
 	var movement := dash_direction if dash_time > 0 else _movement()
 	player.position += movement * (16 if dash_time > 0 else move_speed) * delta
 	player.position.x = clampf(player.position.x, -RushBalance.RING_LIMIT, RushBalance.RING_LIMIT)
 	player.position.z = clampf(player.position.z, -RushBalance.RING_LIMIT, RushBalance.RING_LIMIT)
 	if movement.length_squared() > 0.01: player.face(movement)
 	spawn_clock -= delta
-	if spawn_clock <= 0 and elapsed < 90:
-		spawn_clock = maxf(0.40, 1.1 - wave * 0.11) / float(RushBalance.STAGES[stage].difficulty)
-		if enemies.size() < RushBalance.MAX_ENEMIES - (0 if boss_spawned else 1):
-			var angle := randf() * TAU
-			_spawn(Vector3(cos(angle), 0, sin(angle)) * 6.1)
+	if spawn_clock <= 0:
+		if run_mode == "classic" and elapsed < 90:
+			spawn_clock = maxf(.40,1.1-wave*.11) / float(RushBalance.STAGES[stage].difficulty)
+			if enemies.size() < RushBalance.MAX_ENEMIES-(0 if boss_spawned else 1):
+				var angle := randf()*TAU
+				_spawn(Vector3(cos(angle),0,sin(angle))*6.1)
+		elif run_mode != "classic" and not director.clearing and director.spawned < director.quota:
+			spawn_clock = maxf(.24,.65-wave*.008)
+			if director.boss_wave() and director.spawned == 0: _spawn_boss()
+			else:
+				var angle := randf()*TAU
+				var kind := "runner" if wave%3 == 1 and director.spawned%3 == 0 else ("brute" if wave%3 == 2 and director.spawned%4 == 0 else "rookie")
+				_spawn(Vector3(cos(angle),0,sin(angle))*6.1,kind)
+			director.spawned += 1
+	if arena.update_hazards(elapsed):
+		for vent in arena.vents:
+			if player.position.distance_to(vent.position) < 1.18: _take_damage(12)
+		if int(elapsed*8)%3 == 0:
+			for vent in arena.vents: vfx.burst(vent.position,Color("ffc58e"),2,.7)
 	attack_clock -= delta
 	if attack_clock <= 0: _attack()
 	_build_neighbors()
@@ -356,6 +424,13 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 		_hit(enemy, enemy.burn_damage * 0.5, false, false)
 		vfx.burst(enemy.position + Vector3.UP, Color("ff934b"), 3)
 		if not enemy.active: return
+	if enemy.launch_time > 0:
+		enemy.position += enemy.knockback*delta
+		enemy.knockback=enemy.knockback.move_toward(Vector3.ZERO,delta*20)
+		enemy.position.x=clampf(enemy.position.x,-6.25,6.25)
+		enemy.position.z=clampf(enemy.position.z,-6.25,6.25)
+		enemy.animate(delta,false)
+		return
 	var direction := player.position - enemy.position
 	var distance := direction.length()
 	enemy.face(direction)
@@ -401,6 +476,7 @@ func _take_damage(amount: float) -> void:
 	haptic(20)
 
 func _update_skills(delta: float) -> void:
+	_update_technique(delta)
 	nova_clock -= delta
 	if rank_of("nova") > 0 and nova_clock <= 0:
 		nova_clock = 6
@@ -432,14 +508,156 @@ func dash() -> void:
 func special() -> void:
 	if mode != "playing" or special_charge < 100: return
 	special_charge = 0
-	invulnerable = 0.8
-	shake = 0.20
-	player.punch()
-	vfx.ring(player.position, Color("ffcc70"), 5.2, 0.6)
-	vfx.burst(player.position + Vector3.UP, Color("ffcf72"), 36, 1.8)
-	_area_hit(5.2, damage * 4)
-	audio.play(LEVEL_SOUND, 0.65)
+	invulnerable = 1.0
+	_cast_move(technique_id,2.2)
 	haptic(40)
+
+func technique() -> void:
+	if mode != "playing" or technique_clock > 0: return
+	technique_clock = RushRoster.move(technique_id).cooldown
+	invulnerable = maxf(invulnerable,.35)
+	_cast_move(technique_id,1.0)
+
+func _cast_move(id: String, strength: float) -> void:
+	var tint: Color = selected_character().color
+	player.punch()
+	shake = .18*minf(strength,1.5)
+	match id:
+		"barrage":
+			barrage_time=1.0
+			barrage_tick=0
+			skill_multiplier=strength
+			audio.play(load("res://assets/whoosh.wav"),1.3)
+		"quake":
+			player.slam_time=.55
+			vfx.quake(player.position,tint,4.2+strength*.4)
+			_area_hit(4.2+strength*.4,damage*2.6*strength)
+			for enemy in enemies:
+				if enemy.position.distance_to(player.position)<4.6: enemy.launch_time=.5; enemy.windup=0; enemy.warning.visible=false
+			audio.play(load("res://assets/slam.wav"))
+			hit_stop = .065
+		"cyclone":
+			cyclone_clock = 1.4
+			cyclone_tick = 0
+			skill_multiplier = strength
+			player.spin_time = 1.4
+			audio.play(load("res://assets/whoosh.wav"),.8)
+		"thunder":
+			var origin := player.position+Vector3.UP
+			var count := 0
+			var targets := enemies.duplicate()
+			targets.sort_custom(func(a,b): return a.position.distance_squared_to(player.position)<b.position.distance_squared_to(player.position))
+			for enemy: RushBoxer in targets:
+				if count >= 8 or enemy.position.distance_to(player.position)>6: break
+				vfx.beam(origin,enemy.position+Vector3.UP,Color("98d8ff"))
+				origin = enemy.position+Vector3.UP
+				_hit(enemy,damage*2.1*strength,false,true)
+				count += 1
+			audio.play(load("res://assets/electric.wav"))
+		"dragon":
+			player.launch_time=.65
+			vfx.cyclone(player.position,Color("ffb27f"),2.5)
+			for enemy: RushBoxer in enemies.duplicate():
+				if enemy.position.distance_to(player.position)<3.0:
+					enemy.launch_time=.65
+					_hit(enemy,damage*4*strength,false,true)
+			audio.play(load("res://assets/slam.wav"),1.3)
+		"meteor":
+			projectile_position=player.position+Vector3.UP*.65
+			projectile_direction=-player.basis.z.normalized()
+			projectile_time=1.1
+			projectile_hits.clear()
+			skill_multiplier=strength
+			audio.play(load("res://assets/whoosh.wav"),.65)
+	haptic(22)
+
+func _update_technique(delta: float) -> void:
+	if barrage_time > 0:
+		barrage_time -= delta
+		barrage_tick -= delta
+		if barrage_tick <= 0:
+			barrage_tick=.16
+			player.punch()
+			var closest: RushBoxer
+			var distance := 3.2
+			for enemy in enemies:
+				if enemy.position.distance_to(player.position)<distance:
+					distance=enemy.position.distance_to(player.position)
+					closest=enemy
+			if closest != null:
+				player.face(closest.position-player.position)
+				vfx.beam(player.position+Vector3.UP,closest.position+Vector3.UP,Color("b6ffee"))
+				_hit(closest,damage*.95*skill_multiplier,false,true)
+				audio.play(HIT_SOUND,1.3)
+	if cyclone_clock > 0:
+		cyclone_clock -= delta
+		cyclone_tick -= delta
+		invulnerable = maxf(invulnerable,.08)
+		if cyclone_tick <= 0:
+			cyclone_tick=.22
+			vfx.cyclone(player.position,selected_character().color,2.7)
+			_area_hit(2.9,damage*.52*skill_multiplier)
+	if projectile_time > 0:
+		projectile_time -= delta
+		var previous := projectile_position
+		projectile_position += projectile_direction*12*delta
+		vfx.beam(projectile_position+Vector3.LEFT*.45,projectile_position+Vector3.RIGHT*.45,Color("ffb05e"))
+		vfx.burst(projectile_position,Color("ffdd8c"),3,.4)
+		for enemy: RushBoxer in enemies.duplicate():
+			if enemy.get_instance_id() in projectile_hits: continue
+			var point := Geometry3D.get_closest_point_to_segment(enemy.position+Vector3.UP*.65,previous,projectile_position)
+			if point.distance_to(enemy.position+Vector3.UP*.65)<1.2:
+				projectile_hits.append(enemy.get_instance_id())
+				_hit(enemy,damage*3*skill_multiplier,false,true)
+
+func _advance_waves(delta: float) -> bool:
+	if not director.clearing and director.spawned >= director.quota and enemies.is_empty():
+		director.clearing = true
+		director.rest = 2.4
+		completed_waves = wave
+		hp = minf(max_hp,hp+max_hp*(.15 if director.boss_wave() else .07))
+		special_charge = minf(100,special_charge+10)
+		run_coins += 15 if director.boss_wave() else 5
+		for pickup in pickups: pickup.visible=false; xp+=1
+		pickups.clear()
+		checkpoint()
+		audio.play(LEVEL_SOUND,.85)
+		if wave >= director.target:
+			finish_run(true)
+			return true
+		hud.toast("WAVE %d CLEAR  /  RECOVERY +%d HP" % [wave,int(max_hp*(.15 if director.boss_wave() else .07))])
+	if director.clearing:
+		director.rest -= delta
+		if xp >= xp_needed: _level_up(); return true
+		if director.rest <= 0:
+			director.advance()
+			wave=director.number
+			boss=null
+			boss_spawned=false
+			boss_defeated=false
+			spawn_clock=.2
+			if run_mode == "ladder":
+				stage=mini(4,(wave-1)/5)
+				arena.set_stage(stage)
+				_play_music("street" if stage==1 else "fight")
+			hud.toast("WAVE %d / %d  ·  %s" % [wave,director.target,director.modifier()])
+	return false
+
+func selected_character() -> Dictionary:
+	var id: String = MobileCore.save.data.progress.get("selected_character","atlas")
+	return RushRoster.character(id if RushRoster.owned(MobileCore.save,"character",id) else "atlas")
+
+func selected_move() -> String:
+	var id: String = MobileCore.save.data.progress.get("selected_move",selected_character().move)
+	return id if RushRoster.owned(MobileCore.save,"move",id) else selected_character().move
+
+func _play_music(track: String) -> void:
+	var stream: AudioStream = load("res://assets/music_"+track+".ogg")
+	stream.loop = true
+	if music.stream == stream and music.playing: return
+	music.stop()
+	music.stream=stream
+	music.play()
 
 func _area_hit(radius: float, amount: float) -> void:
 	for enemy: RushBoxer in enemies.duplicate():
@@ -465,9 +683,10 @@ func _spawn(at: Vector3, kind: String = "") -> RushBoxer:
 	enemy.configure(kind)
 	enemy.position = at
 	var factor: float = RushBalance.STAGES[stage].difficulty
-	enemy.max_health = (24 + wave * 3) * factor * {"rookie": 1.0, "runner": 0.75, "brute": 2.4, "boss": 18.0}.get(kind, 1)
+	enemy.max_health = (24 + wave * (3.0 if run_mode == "classic" else .85)) * factor * {"rookie": 1.0, "runner": 0.75, "brute": 2.4, "boss": 18.0}.get(kind, 1)
+	if kind == "boss" and run_mode != "classic": enemy.max_health = (180+wave*12)*factor
 	enemy.health = enemy.max_health
-	enemy.speed = (1.3 + wave * 0.10) * {"rookie": 1.0, "runner": 1.6, "brute": 0.7, "boss": 0.8}.get(kind, 1)
+	enemy.speed = (1.3 + minf(1.0,wave * 0.04)) * {"rookie": 1.0, "runner": 1.6, "brute": 0.7, "boss": 0.8}.get(kind, 1)
 	enemy.face(player.position - at)
 	enemies.append(enemy)
 	return enemy
@@ -525,6 +744,7 @@ func _hit(enemy: RushBoxer, amount: float, status: bool = true, critical: bool =
 	vfx.burst(enemy.position + Vector3.UP, Color("acdcff") if enemy.frost > 0 else Color("ffca62"), 5)
 	vfx.damage_number(enemy.position, ceili(amount), critical)
 	if enemy.health <= 0:
+		if enemy.role == "boss": audio.play(load("res://assets/ko.wav")); hit_stop=.08
 		kills += 1
 		combo += 1
 		combo_clock = 4
@@ -588,4 +808,37 @@ func haptic(duration: int) -> void:
 func _frame_showroom() -> void:
 	if mode != "home": return
 	var viewport := get_viewport().get_visible_rect().size
-	camera.size = 6.8 * maxf(1.0, (viewport.x/viewport.y) / (540.0/960.0))
+	camera.size = 5.5 * maxf(1.0, (viewport.x/viewport.y) / (540.0/960.0))
+
+func has_resume() -> bool:
+	var pending: Dictionary = MobileCore.save.data.progress.get("pending_run",{})
+	return RushRunSnapshot.valid(pending.get("state")) and not MobileCore.save.data.transactions.has(str(pending.get("id","")))
+
+func resume_saved_run() -> void:
+	if mode != "home" or not has_resume(): return
+	var pending: Dictionary = MobileCore.save.data.progress.pending_run.duplicate(true)
+	restoring=true
+	run_mode=pending.state.run_mode
+	stage=pending.state.stage
+	# A ladder save may legitimately be beyond the separately unlocked circuit.
+	var stored_stage := stage
+	stage=0
+	start_run()
+	restoring=false
+	if mode != "playing": return
+	stage=stored_stage
+	run_id=pending.id
+	RushRunSnapshot.restore(self,pending.state)
+	hud.toast("Fight restored. Resume when you are ready.")
+
+func bank_saved_run() -> void:
+	if mode != "home": return
+	var amount := RushProgress.recover(MobileCore.save)
+	if amount < 0: hud.toast("Unable to bank the saved fight. Free storage and retry."); return
+	go_home()
+	hud.toast("Saved fight banked: %d coins."%amount)
+
+func _exit_tree() -> void:
+	if music != null:
+		music.stop()
+		music.stream=null

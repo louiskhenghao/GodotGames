@@ -1,80 +1,77 @@
 # Ring Rush
 
-A portrait 3D boxing-survival game built with **Godot 4.5.1 / GDScript** for an Android/iOS pipeline. Detailed articulated fighters, an animated showroom, an arena with instanced spectators, and a reusable mobile core. Original procedural models, icons and sounds; Barlow Condensed is bundled under its OFL license.
+Portrait 3D boxing survival in **Godot 4.5.1**, with an Android/iOS export pipeline and reusable `addons/mobile_core/` services. This build replaces the primitive boxer with a textured, rigged Quaternius humanoid, adds five venues, six coin-unlockable fighting styles, six equipable signature techniques and finite wave challenges.
 
-**Status:** expanded playable desktop-validated prototype. Live native ads/billing, receipt validation, signed mobile binaries and physical Android/iOS testing are still pending. The locker labels all debug ads/purchases as simulations and never charges money. Release builds without a native provider report unavailable.
+**Status:** playable and validated on macOS. Native ads/IAP adapters, receipt validation, signed mobile binaries and physical Android/iOS testing remain pending. The development cosmetic store explicitly simulates transactions; fighter and technique purchases use earned game coins.
 
 ## Play
 
-Import `project.godot` into Godot 4.5.1 and press **F5**, or run `run.command` on this Mac. The launcher finds `/Applications/Godot.app` or the temporary Godot runtime used during development. Set `GODOT_BIN` if needed.
-
-```sh
-GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot ./run.command
-```
+Open `project.godot` in Godot 4.5.1 and press **F5**, or double-click `run.command` on this Mac. Set `GODOT_BIN` if Godot is installed elsewhere.
 
 | Action | Touch | Keyboard |
 | --- | --- | --- |
-| Move | Drag anywhere below the HUD, away from action buttons | WASD / arrow keys |
-| Punch | Automatic, toward nearby opponents | Automatic |
-| Dash | Dash button; can use a second finger while steering | Space |
-| Special | Unleash button at 100% charge | E |
-| Pause | Pause button | Esc |
+| Move | Drag away from action buttons | WASD / arrows |
+| Punch | Automatic toward nearby enemies | Automatic |
+| Dodge | Dodge | Space |
+| Equipped technique | Technique, on cooldown | Q |
+| Amplified technique | Unleash at 100% meter | E |
+| Pause | Pause | Esc |
 
-Red ground circles telegraph incoming attacks. Dash grants brief invulnerability. Knockouts charge a large area special. Teal gems grant XP; every level offers three eligible skills and one free reroll is available per run.
+Dodge red attack warnings. Collect teal XP, choose one of three upgrades and combine up to 18 passive skills. Two rerolls are available per run. Techniques recharge independently of the ultimate meter; knockouts and wave clears charge the ultimate. Five-wave boss checkpoints punctuate longer runs. Clear a wave to collect remaining XP, recover some health and receive a short break.
 
-## Complete the circuit
+## Challenges and venues
 
-Survive a 90-second round and defeat its champion. The champion arrives at 75 seconds; if still alive at the bell, you have up to 30 seconds of overtime. A win banks the stage bonus and unlocks the next circuit. There are three circuits with different arena palettes and increasing difficulty: **The Underground**, **Neon Docks**, and **Golden Crown**. Champions share a telegraphed slam attack with stage-scaled health; they are not three separate boss move sets.
+- **Quick Fight:** 10 clear-based waves, designed for a short session.
+- **Survival 30 / Onslaught 50:** complete 30 or 50 waves with an increasingly strong build.
+- **World Ladder:** 25 waves across all five venues, changing venue after each five-wave boss.
+- **90-second Rush:** the original timed format, champion at 75 seconds and a bounded 30-second overtime.
 
-Enemies include standard boxers, fast runners, resilient brutes, and the champion. A combo indicator tracks consecutive knockouts. Damage prevention has a short shared invulnerability window so a crowd cannot deliver every contact hit simultaneously.
+Venues: **The Underground** boxing ring, **Neon Siege** street ambush, **Skyline Rooftop** helipad, **Iron Foundry** with timed steam vents, and **Dawn Temple** courtyard. Winning a venue unlocks the next for standalone fights. Ladder visits them automatically. Bosses currently share the telegraphed area-slam behavior with different scaled stats.
 
-The gym provides five levels each of permanent power, conditioning, and starting special charge. The playbook describes every skill, and the pause menu shows your current build. The locker contains a cosmetic gold-glove test unlock and an optional simulated rewarded ad for training coins.
+## Fighters and moves
 
-### Skills
+| Fighter | Starting HP / damage | Signature | Starting passive | Coins |
+| --- | --- | --- | --- | ---: |
+| Atlas | 110 / 20 | Hundred Hands — tracking six-hit combination | Iron guard | Free |
+| Zephyr | 85 / 15 | Cyclone Fist — mobile multi-hit spin | Light feet | 180 |
+| Titan | 155 / 29 | Fault Line — ground cracks, shockwave and stagger | Iron guard ×2 | 300 |
+| Volt | 95 / 17 | Thunder Step — up to eight chained targets | Live wire | 420 |
+| Raven | 90 / 23 | Rising Dragon — uppercut and launch | Fighting spirit | 550 |
+| Sol | 105 / 19 | Solar Wave — piercing fire projectile | Hot knuckles | 700 |
 
-18 stackable choices: Heavy hands, Quick combo, Long reach, Second wind, Ring shock, Light feet, Sweet spot, Iron guard, Steady breath, Prize fighter, Hot knuckles, Cold snap, Live wire, Fighting spirit, Satellite fists, Slip & strike, Main event, and Big heart.
+Movement speed and punch timing also differ. Unlocking a fighter includes its technique. Techniques can be purchased separately and equipped on any owned fighter. Atlas and Fault Line are available from the start. The gym retains permanent power/health/charge training. Coins, ownership and selection commit atomically; failed writes do not debit the balance.
 
-These cover damage, attack speed, reach, healing, shockwaves, movement, critical hits, armor, regeneration, pickup attraction, burning, slowing, chain lightning, health on knockout, orbiting attacks, dash cooldown, special charge and maximum health. Each choice has a rank cap; capped skills are removed from the offer pool. Heals are not offered at full health.
+## Save and resume
 
-## Robustness and performance
+Active fights checkpoint every 15 seconds, on wave clears and when the app loses focus. The snapshot includes the run ID, wave director, stats, build, enemies, statuses, pickups and pending upgrade choice. **Resume Saved Fight** restores it to a paused screen. The challenge menu can instead bank the saved run and start fresh. Rewards settle once per run ID. A force-kill can lose the time since the last successful checkpoint. Older checkpoints without a complete snapshot bank their saved coins on launch.
 
-- Combat uses a fixed physics tick; movement and cooldowns do not depend on render rate.
-- Forty-eight pooled enemies and 64 pooled pickups; no actor construction/destruction during combat. Model variants are prewarmed at startup and reuse the resulting mesh resources.
-- Fighter details are baked into six shared animated mesh surfaces. The showroom hero has more geometry; small crowd actors use fewer segments.
-- One instanced stadium-chair mesh, one audience mesh, and one instanced particle mesh. Pools cap effects at 192 particles, 12 expanding rings, 16 damage labels, and six audio voices.
-- Spatial neighbor buckets limit crowd-separation checks. Battery saver removes dynamic shadows, the audience and 3D anti-aliasing.
-- Gameplay pauses on app suspension/focus loss. Coins and knockout counts checkpoint every 15 seconds and on suspension; the next launch banks the last successful checkpoint. Active fights are not resumed, and a force-kill can lose progress since the last checkpoint.
-- Result rewards, run records and stage unlocks commit together with a transaction ID. Repeat settlement cannot grant twice. Failed result writes expose a retry without discarding the result.
-- A corrupted primary save can recover from a healthy backup. A future save schema blocks writes rather than downgrading the profile.
-- Responsive phone/tablet layout and mobile safe-area offsets are implemented; actual cutouts and mobile input still need device verification.
+## Performance and reusable core
 
-See [validation and rendering measurements](docs/validation.md). Desktop timings are not a mobile performance guarantee.
+- Pool of 48 opponents / 64 pickups; combat does not create/free actors.
+- Hero uses the imported humanoid skeleton. Crowds share reduced meshes with 24 Hz baked real animation poses, in two surfaces per frame. The complete crowd animation asset is about 6.6 MB compressed.
+- Environments are batched; spectators, particles and ground cracks use instancing.
+- Fixed limits: 192 particles, 12 shockwave rings, 48 crack segments, 16 damage numbers and six SFX voices. Music has its own player and mute setting.
+- Spatial crowd separation, fixed physics simulation, safe-area UI and independent second-finger action controls.
+- Battery saver removes real-time shadows, audience and MSAA.
 
-## Reuse in another game
+`addons/mobile_core/` contains reusable persistence, provider-based monetization, VFX, audio and touch input without importing game rules. See [architecture](docs/architecture.md), [validation](docs/validation.md) and [mobile release work](docs/mobile-release.md).
 
-`addons/mobile_core/` contains save, commerce, touch input, VFX and audio services with no dependency on `game/`. Ring Rush owns its balance, models, UI, stage progression and skill rules. See [architecture](docs/architecture.md) and [mobile release integration](docs/mobile-release.md).
-
-```text
-addons/mobile_core/    Reusable services and provider interfaces
- game/                 Ring Rush actors, mesh factory, combat, skills, menus, progression
- scenes/main.tscn       Entry scene
- assets/               Icon, generated sounds, licensed display font
- tests/                Regression suite, deterministic captures, benchmarks
- docs/                 Integration notes, measurements and actual engine captures
-```
-
-## Verify
+## Verify and rebuild assets
 
 ```sh
 godot --headless --path . --editor --import --quit
 godot --headless --path . --script res://tests/run_tests.gd
-godot --path . --script res://tests/capture.gd --resolution 540x960
-godot --path . --script res://tests/performance.gd --resolution 540x960 --disable-vsync -- /tmp/ring-render.json
-godot --path . --script res://tests/performance.gd --resolution 540x960 --disable-vsync -- /tmp/ring-stress.json stress
+godot --headless --path . --script res://tests/expansion_tests.gd
+godot --headless --path . --script res://tests/balance_sim.gd
+godot --path . --script res://tests/capture.gd
+godot --path . --disable-vsync --script res://tests/performance.gd -- /tmp/rush-stress.json stress
 ```
 
-Tests/captures use disposable profiles and clean them up. Captures stage a representative combat scene to show the available models and effects; they are real Godot renders, not concept images. The accelerated full-round regression increases health/damage to verify state transitions, not difficulty balance.
+All test/capture profiles are disposable. Full-wave transition tests boost HP/damage; the separate balance bot uses starting stats. Actual human enjoyment, long-term economy, thermal behavior and mobile touch latency need human/device playtesting.
 
-![Actual game showroom](docs/preview-home.png)
+- `python3 tools/prepare_fighter.py`: assemble the humanoid and selected CC0 animation tracks.
+- `godot --path . --script res://tools/bake_crowd.gd`: rebuild optimized crowd poses; requires the native renderer, not `--headless`.
+- `python3 tools/generate_audio.py`: original level-up sound.
+- `python3 tools/generate_score.py`: original music and layered combat SFX (Python + ffmpeg).
 
-Reference: the user's gameplay recording and [Endless Puncher](https://play.google.com/store/apps/details?id=com.fubugames.endlesspuncher&hl=en). No assets or code from the reference game are included. Full home construction, a large equipment inventory, additional boss move sets, live operations and production mobile monetization remain outside this version.
+Model/animation attribution and license: [asset credits](assets/fighters/CREDITS.md). Barlow Condensed uses its bundled OFL license. Reference gameplay: [Endless Puncher](https://play.google.com/store/apps/details?id=com.fubugames.endlesspuncher&hl=en); no reference-game assets or code are included.

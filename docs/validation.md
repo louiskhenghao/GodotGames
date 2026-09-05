@@ -1,37 +1,48 @@
-# Validation — Ring Rush gameplay expansion
+# Ring Rush expansion validation
 
-Godot **4.5.1**, macOS, Apple **M5 Max**, OpenGL Compatibility renderer. These are desktop observations, not certification of Android/iOS builds or a promise of physical-device frame rate.
+**Godot 4.5.1 / macOS / Apple M5 Max / OpenGL Compatibility**, 5 September 2026. This validates the playable desktop build. Signed Android/iOS exports, real ads/billing and physical-device performance remain untested.
 
-## Functional regression
+## Automated behavior
 
-The final headless run completed **65 checks with zero failures** and clean shutdown. The suite covers commerce cancellation, duplicate transactions, verified late purchases, restoration, save failures, backup recovery, future-schema protection, touch movement, second-finger dash, legal ability selection, rank caps, reroll limits, burn/frost, lightning, orbiting gloves, armor, regeneration, life on knockout, dash invulnerability, special charge, actor-pool reuse, complete rounds, champion unlocks, overtime defeat, atomic settlement and checkpoint recovery.
+- `tests/run_tests.gd`: **65 checks, zero failures**. Persistence/backup and future-schema handling, monetization callback safety, input, state transitions, status effects, original timed rounds, rewards and real shared crowd geometry.
+- `tests/expansion_tests.gd`: **60 checks, zero failures**. All six character kits, all six techniques and their cooldowns, insufficient coins, duplicate/unknown unlocks, ownership reload, 10/30/50-wave and 25-wave ladder completion, all five ladder venues, per-mode records, duplicate settlement, serialized wave-17 resume including enemy health/status and build, and new menu construction.
+- Full-wave completion checks boost HP/damage to reach every transition. They prove finite completion and correct state handling, not final balance.
+- `tests/balance_sim.gd` is a separate deterministic bot using **fresh-account Atlas stats**, automatic targeting, nearest-enemy movement and automatic technique/ultimate usage. It chooses available upgrades without test damage/health overrides.
 
-A full round is accelerated with increased test health/damage to reach all state transitions. That test establishes that victory and progression work; it does not establish final difficulty balance. Content and economy still need human playtesting on physical devices.
+| Bot scenario | Result | Simulated combat time | KOs | Ending level |
+| --- | --- | ---: | ---: | ---: |
+| Quick Fight | 10 waves cleared | 90.9 s | 74 | 6 |
+| Survival 30 | 30 waves cleared | 332.6 s | 375 | 15 |
+| Onslaught 50 | 50 waves cleared | 566.5 s | 808 | 23 |
 
-## Rendering comparison
+The bot reacts perfectly to the nearest enemy's telegraph, does not spend real time reading upgrade choices, and is not a substitute for people playing. It finished with full health after recovery/sustain upgrades; this suggests there is room for harder enemy patterns and difficulty tuning. Enjoyment and long-term economy are not certified by automation.
 
-Identical 540×960 viewport, 48 visible animated fighters, VSync disabled. After 60 warmup frames, 180 frames were sampled. The render-only comparison disables the game simulation in both versions; the upgraded build includes 2× MSAA. Counters include the engine's rendering/shadow passes. Results are one local comparison and will vary across hardware and system load.
+## Final crowd stress measurement
 
-| Metric | Initial prototype | Expanded game |
-| --- | ---: | ---: |
-| Draw calls per frame | 1,229 | 641 |
-| Scene nodes | 856 | 595 |
-| Rendered primitives per frame | 62,438 | 292,890 |
-| Median frame interval | 3.357 ms | 1.932 ms |
-| 95th percentile frame interval | 4.871 ms | 2.972 ms |
+Explicit **540 × 960** render target, VSync off, 2× MSAA, 48 animated enemies retained using elevated benchmark health, elemental/orbit effects, physics simulation and HUD updates. 60 warmup frames followed by 180 samples.
 
-The expanded scene uses approximately **48% fewer draw calls** and has a **42% lower median frame interval** on this machine. It renders more geometry for the improved models; the reduced submission overhead outweighs that cost here. This tradeoff must be measured on mobile GPUs. The high-detail hero and lower-detail crowd share baked mesh resources, while stadium repetition and particles use MultiMesh.
+| Metric | Final build |
+| --- | ---: |
+| Median frame interval | **1.875 ms** |
+| 95th percentile | **2.889 ms** |
+| Draw calls | **282** |
+| Scene nodes | **380** |
+| Rendered primitives, including passes | **474,472** |
 
-A separate stress run enables simulation, a full 48-enemy crowd, burning, slowing, chain lightning, orbiting gloves, nova and HUD updates. It observed **2.295 ms median**, **4.018 ms p95**, **679 draw calls**, and **595 nodes** over the same sample length. Enemy/player test health is raised to retain the full crowd. This short burst test does not measure sustained thermals, battery drain or a worst-case device.
+During development, the straightforward version with 48 complete live humanoid rigs was too expensive (about 38 ms median in a smaller default window). Replacing crowd rigs with shared reduced pose meshes addressed that regression. The hero still uses continuous skeletal animation. These intermediate runs used different window sizes and are not a controlled percentage comparison.
 
-Reproduce with `tests/performance.gd` using the commands in the README. The output JSON is written to the path supplied after `--`; append `stress` for the combined workload. Saves are isolated and removed at exit.
+`assets/fighters/crowd.res` is approximately **6.6 MB compressed**, down from a 32 MB intermediate bake after unused vertices and channels were removed. Each crowd pose has two mesh surfaces. Geometry and materials are shared across pooled actors. Crack effects add one bounded MultiMesh rather than creating scene objects during a slam.
 
-## Visual and interaction review
+This short desktop benchmark does not measure phone GPU limits, sustained thermals, battery drain or native mobile overlays. Run `tests/performance.gd` on target hardware before claiming a mobile frame-rate target.
 
-Actual Godot frames were inspected at portrait phone sizes and a tablet aspect ratio: 540×960, 540×800, 540×1170 and 768×1024. The review covered the fighter showroom, combat, skill selection, training, circuit selection, locker and scrolling playbook. The canvas expands across aspect ratios. A framing overlap and disabled-icon contrast issue were corrected. Native safe-area measurements are applied on mobile but remain unverified against physical cutouts/system bars.
+## Visual review
 
-Controls support mouse/keyboard and touch. An explicit regression holds the movement touch while a second finger activates dash; another verifies skill-button touches do not start the movement stick. Physical-device touch latency, suspension, ad/store overlays and accessibility remain release work.
+Actual native Godot frames were inspected for the textured boxer, underground ring, street, rooftop, foundry, temple, earthquake effect, fighter unlocks and phone/tablet menu layouts. Street foreground buildings were shortened to keep opponents visible. The showroom was reframed to separate the fighter from its nameplate. The lower combat HUD has a contrast gradient over scenery.
 
-## Still outside this validation
+Captures are staged engine renders, not concept art. UI supports safe-area insets and second-finger actions, but real phone cutouts, gesture bars and touch latency remain to be checked.
 
-No signed AAB/IPA, native ad SDK, real store transaction, backend receipt validation, physical Android/iPhone benchmark, device thermal test, full home-construction system, broad equipment inventory, or long-term economy balancing is represented as complete. See `mobile-release.md` for native integration work.
+## Asset provenance and remaining release work
+
+The human mesh, textures and base animation clips are CC0 Quaternius assets; see `assets/fighters/CREDITS.md`. Character wardrobe, arenas, icons, effects and synthesized musical compositions/SFX are original project work. The six identities share the same base anatomy with different proportions/colorways and combat kits; they are not six separately sculpted humans. Bosses share the same telegraphed area attack behavior.
+
+Native ad SDKs, store products/receipts, restore/refund reconciliation, consent flows, signing and Android/iOS hardware validation remain release work, documented in `mobile-release.md`. Development store transactions remain explicitly simulated.

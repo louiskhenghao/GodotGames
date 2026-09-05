@@ -1,5 +1,10 @@
 class_name RushArena
 extends Node3D
+var venues: Array[Node3D] = []
+var ring_nodes: Array[Node3D] = []
+var vents: Array[MeshInstance3D] = []
+var current_stage := 0
+var in_showroom := false
 var key_light: DirectionalLight3D
 var canvas: MeshInstance3D
 var accents: Array[MeshInstance3D] = []
@@ -105,16 +110,126 @@ func _ready() -> void:
 	audience.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(audience)
 
+	for child in get_children():
+		if child is GeometryInstance3D: ring_nodes.append(child)
+	venues.append(self)
+	_build_venues()
+
 func set_stage(index: int) -> void:
-	var tint: Color = RushBalance.STAGES[index].tint
-	for accent in accents: accent.material_override.albedo_color = tint
-	canvas.material_override.albedo_color = [Color("7c897f"), Color("747d99"), Color("9a8b6e")][index]
+	current_stage = clampi(index,0,4)
+	for node in ring_nodes: node.visible = current_stage == 0 and not in_showroom
+	for i in range(1,venues.size()): venues[i].visible = i == current_stage and not in_showroom
+	key_light.light_color = [Color("ffe7c0"),Color("cbbfff"),Color("b9daff"),Color("ffcc9e"),Color("ffe4b6")][current_stage]
+	set_quality(MobileCore.save.data.settings.get("low_quality",false))
 
 func set_quality(low: bool) -> void:
 	key_light.shadow_enabled = not low
-	audience.visible = not low
+	audience.visible = not low and current_stage == 0 and not in_showroom
 
 func showroom(enabled: bool) -> void:
-	for child in get_children():
-		if child is GeometryInstance3D: child.visible = not enabled
-	if not enabled: set_quality(MobileCore.save.data.settings.get("low_quality", false))
+	in_showroom = enabled
+	set_stage(current_stage)
+
+func _batch(parent: Node3D, parts: Array) -> void:
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = RushModelFactory.bake(parts, 8)
+	parent.add_child(mesh)
+
+func _sign(parent: Node3D, text: String, at: Vector3, tint: Color, flat: bool = false) -> void:
+	var sign := Label3D.new()
+	sign.text = text
+	sign.font = load("res://assets/fonts/BarlowCondensed-Bold.ttf")
+	sign.font_size = 80
+	sign.pixel_size = .014
+	sign.outline_size = 0
+	sign.modulate = tint
+	sign.position = at
+	if flat: sign.rotation_degrees.x = -90
+	parent.add_child(sign)
+
+func _build_venues() -> void:
+	for index in range(1,5):
+		var venue := Node3D.new()
+		add_child(venue)
+		venues.append(venue)
+		var parts: Array = []
+		var ground: Color = [Color("243342"),Color("455569"),Color("403830"),Color("8f9c8d")][index-1]
+		parts.append(RushModelFactory.piece("box",Vector3(17,.4,17),Vector3(0,-.24,0),ground))
+		# Every venue has a clear 12m combat area; scenery remains outside the playable boundary.
+		if index == 1:
+			for side in [-1,1]:
+				parts.append(RushModelFactory.piece("box",Vector3(.8,.15,16),Vector3(side*7.4,.02,0),Color("6e7780")))
+				for i in 4:
+					var x: float = side*(8.7+float(i%2)*.4)
+					var z := -6.0+i*4.2
+					parts.append(RushModelFactory.piece("box",Vector3(2.3,5+i%2 if side<0 else 1.25,3.6),Vector3(x,1.9 if side<0 else .4,z),Color("253443") if i%2 else Color("394452")))
+					for floor in (3 if side<0 else 1):
+						parts.append(RushModelFactory.piece("box",Vector3(.04,.7,1.6),Vector3(x-side*1.17,1+floor*1.15,z),Color("dbac77") if floor%2 else Color("798aaf")))
+				for i in 3:
+					parts.append(RushModelFactory.piece("box",Vector3(.16,3,.16),Vector3(side*6.9,1.5,-5+i*5),Color("6d7689")))
+					parts.append(RushModelFactory.piece("box",Vector3(.6,.1,.35),Vector3(side*6.7,3,-5+i*5),Color("a9eddf")))
+			for i in 7: parts.append(RushModelFactory.piece("box",Vector3(.12,.02,1.15),Vector3(0,.01,-6+i*2),Color("beb68d")))
+			for x in [-3.5,3.5]:
+				parts.append(RushModelFactory.piece("box",Vector3(1.6,.65,3.1),Vector3(x,.3,-8),Color("384961")))
+				parts.append(RushModelFactory.piece("box",Vector3(1.35,.55,1.5),Vector3(x,.85,-8),Color("61717f")))
+			_sign(venue,"NEON / 24",Vector3(-7,3.3,-5.9),Color("ff87c5"))
+			_sign(venue,"NO WAY OUT",Vector3(0,.04,4.8),Color("9e7180"),true)
+		elif index == 2:
+			for edge in [-7.5,7.5]:
+				parts.append(RushModelFactory.piece("box",Vector3(15,.3,.3),Vector3(0,.2,edge),Color("8a9bac")))
+				parts.append(RushModelFactory.piece("box",Vector3(.3,.3,15),Vector3(edge,.2,0),Color("8a9bac")))
+			for i in 18:
+				var angle := i*TAU/18
+				var at := Vector3(cos(angle)*16, -3, sin(angle)*16)
+				parts.append(RushModelFactory.piece("box",Vector3(2.5,5+i%5,2.5),at,Color("263d59")))
+			for x in [-3.0,3.0]:
+				parts.append(RushModelFactory.piece("box",Vector3(.15,.02,7),Vector3(x,.02,0),Color("d4bf87")))
+			parts.append(RushModelFactory.piece("box",Vector3(6,.02,.15),Vector3(0,.02,3.5),Color("d4bf87")))
+			parts.append(RushModelFactory.piece("box",Vector3(6,.02,.15),Vector3(0,.02,-3.5),Color("d4bf87")))
+			_sign(venue,"H",Vector3(0,.04,0),Color("c9c6a8"),true)
+		elif index == 3:
+			for x in [-8.0,8.0]:
+				for z in [-6.0,-2.0,2.0,6.0]:
+					parts.append(RushModelFactory.piece("box",Vector3(1,5,1),Vector3(x,2.0,z),Color("55545a")))
+					parts.append(RushModelFactory.piece("box",Vector3(1.5,.4,2.8),Vector3(x,.1,z),Color("a96f36")))
+					parts.append(RushModelFactory.piece("box",Vector3(.08,2.5,1.6),Vector3(x-signf(x)*.54,1.6,z),Color("e57c3c")))
+			for i in 8:
+				parts.append(RushModelFactory.piece("box",Vector3(14,.018,.045),Vector3(0,.02,-6+i*1.7),Color("55504c")))
+			_sign(venue,"CAUTION / PRESSURE",Vector3(0,.035,-4.8),Color("e0a65c"),true)
+		else:
+			for i in 9:
+				for j in 9:
+					parts.append(RushModelFactory.piece("box",Vector3(1.45,.025,1.45),Vector3(-6+i*1.5,.01,-6+j*1.5),Color("a9b3a1") if (i+j)%2 else Color("9ea996")))
+			for x in [-7.5,7.5]:
+				for z in [-7.5,7.5]:
+					parts.append(RushModelFactory.piece("box",Vector3(.55,3.4,.55),Vector3(x,1.5,z),Color("933d34")))
+					parts.append(RushModelFactory.piece("box",Vector3(2,.3,2),Vector3(x,3.3,z),Color("384b4d")))
+					parts.append(RushModelFactory.piece("sphere",Vector3(.7,.9,.7),Vector3(x,2.4,z),Color("e8bc65")))
+			parts.append(RushModelFactory.piece("box",Vector3(15,.5,1),Vector3(0,3.7,-7.5),Color("923f34")))
+			for x in [-11.0,11.0]:
+				parts.append(RushModelFactory.piece("box",Vector3(.55,5,.55),Vector3(x,1.5,-3),Color("4a5143")))
+				parts.append(RushModelFactory.piece("sphere",Vector3(5,3,5),Vector3(x,4,-3),Color("b991a7")))
+			_sign(venue,"DAWN / FINAL ASCENT",Vector3(0,.045,4.5),Color("5f7464"),true)
+		_batch(venue,parts)
+		venue.visible = false
+	# Two reusable steam vent telegraphs for the foundry; game owns their damage timing.
+	for at in [Vector3(-3,0,1.8),Vector3(3,0,-1.8)]:
+		var marker := MeshInstance3D.new()
+		var circle := TorusMesh.new()
+		circle.inner_radius=1.05
+		circle.outer_radius=1.18
+		circle.rings=32
+		circle.ring_segments=4
+		marker.mesh=circle
+		marker.position=at+Vector3.UP*.08
+		marker.scale.y=.08
+		marker.material_override=RushBoxer.material(Color("e4a05e"))
+		marker.material_override.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+		venues[3].add_child(marker)
+		vents.append(marker)
+
+func update_hazards(time: float) -> bool:
+	var phase := fmod(time,8.0)
+	for vent in vents:
+		vent.material_override.albedo_color = Color("ff5f47") if phase > 6 else (Color("ffbc5e") if phase > 4.5 else Color("65554b"))
+	return current_stage == 3 and phase > 6
