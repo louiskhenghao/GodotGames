@@ -1,0 +1,12 @@
+{
+  "character": "onyx",
+  "draw_calls": 381.0,
+  "enemies": 48,
+  "median_frame_ms": 2.109,
+  "nodes": 480.0,
+  "p95_frame_ms": 2.807,
+  "primitives": 656830.0,
+  "stage": 1,
+  "stress": true,
+  "viewport": "(540.0, 960.0)"
+}

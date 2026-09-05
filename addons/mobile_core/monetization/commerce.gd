@@ -10,7 +10,10 @@ var placements: Dictionary = {}
 var pending: Dictionary = {}
 var timeout_seconds := 45.0
 
-func configure(save: CoreSaveStore, adapter: CoreCommerceProvider, catalog: Dictionary, rewards: Dictionary) -> void:
+func configure(save: CoreSaveStore, adapter: CoreCommerceProvider, catalog: Dictionary, rewards: Dictionary) -> bool:
+	if not pending.is_empty():return false
+	if provider!=null:
+		remove_child(provider);provider.queue_free()
 	store = save
 	provider = adapter
 	products = catalog
@@ -20,6 +23,7 @@ func configure(save: CoreSaveStore, adapter: CoreCommerceProvider, catalog: Dict
 	provider.interstitial_finished.connect(_on_interstitial)
 	provider.purchase_finished.connect(_on_purchase)
 	provider.restore_finished.connect(_on_restore)
+	return true
 
 func _begin(kind: String, key: String) -> String:
 	if not pending.is_empty():

@@ -9,7 +9,8 @@ const MODES := [
  {"id":"hell","name":"HELL MODE","waves":20,"icon":"skull","detail":"20 dense waves · No normal-wave healing"},
  {"id":"bossrush","name":"BOSS RUSH","waves":5,"icon":"crown","detail":"5 bosses · Dodge rushes, circles and slams"},
  {"id":"ladder","name":"WORLD LADDER","waves":25,"icon":"stairs","detail":"5 venues · 5 waves in each"},
- {"id":"classic","name":"90 SEC RUSH","waves":6,"icon":"timer","detail":"90 seconds · Beat the champion"}
+ {"id":"classic","name":"90 SEC RUSH","waves":6,"icon":"timer","detail":"90 seconds · Beat the champion"},
+ {"id":"rift","name":"THE RIFT","waves":12,"icon":"skull","detail":"12 waves · A secret creature encounter"}
 ]
 var number := 1
 var target := 10
@@ -29,7 +30,8 @@ func begin(id: String) -> void:
 	_prepare()
 func _prepare() -> void:
 	quota = mini(22, 4 + number / 2 + (3 if number % 3 == 0 else 0))
-	if mode_id=="hell":quota=mini(36,12+number)
+	if mode_id=="rift":quota=mini(26,8+number)
+	elif mode_id=="hell":quota=mini(36,12+number)
 	elif mode_id=="blitz":quota=mini(24,6+number*2)
 	elif mode_id=="bossrush":quota=1
 	spawned = 0

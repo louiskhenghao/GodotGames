@@ -13,9 +13,9 @@ static func blockers(stage:int) -> Array[Vector3]:
 static func base_polygon(stage: int) -> PackedVector2Array:
 	match stage:
 		1:return PackedVector2Array([Vector2(-4.6,-8.7),Vector2(4.6,-8.7),Vector2(4.6,8.7),Vector2(-4.6,8.7)])
-		2:
+		2,5:
 			var points:=PackedVector2Array()
-			for i in 8:points.append(Vector2.from_angle(i*TAU/8+PI/8)*6.8)
+			for i in 8:points.append(Vector2.from_angle(i*TAU/8+PI/8)*(8.2 if stage==5 else 6.8))
 			return points
 		3:return PackedVector2Array([Vector2(-8.5,-4.5),Vector2(8.5,-4.5),Vector2(8.5,4.5),Vector2(-8.5,4.5)])
 		4:return PackedVector2Array([Vector2(-5.5,-4.6),Vector2(0,-7),Vector2(5.5,-4.6),Vector2(6,3),Vector2(0,6.8),Vector2(-6,3)])
@@ -25,6 +25,7 @@ static func base_blockers(stage: int) -> Array[Vector3]:
 		1:return [Vector3(-2.6,-3.5,.72),Vector3(2.6,3.5,.72)]
 		2:return [Vector3(-3.5,1.6,.8),Vector3(3.5,-1.6,.8)]
 		3:return [Vector3(-4.0,-1.5,.9),Vector3(4.0,1.5,.9)]
+		5:return [Vector3(-4,-2,.85),Vector3(4,-2,.85),Vector3(0,4,.9)]
 		4:return [Vector3(-3.2,-1.6,.72),Vector3(3.2,-1.6,.72),Vector3(0,3.5,.75)]
 		_:return []
 static func constrain(at: Vector3, stage: int, radius: float=.34) -> Vector3:

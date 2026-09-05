@@ -1,0 +1,14 @@
+config_version=5
+[application]
+config/name="Core Starter"
+run/main_scene="res://main.tscn"
+[autoload]
+MobileCore="*res://addons/mobile_core/mobile_core.gd"
+[display]
+window/size/viewport_width=540
+window/size/viewport_height=960
+window/stretch/mode="canvas_items"
+[rendering]
+renderer/rendering_method="gl_compatibility"
+[mobile_core]
+monetization/allow_debug_mock=true

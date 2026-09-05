@@ -16,7 +16,8 @@ const STAGES := [
 	{"name":"NEON SIEGE","detail":"Street crews surround you beneath the neon signs.","boss":"THE COLLECTOR","tint":Color("b397ff"),"difficulty":1.12,"reward":140},
 	{"name":"SKYLINE ROOFTOP","detail":"Fight above the city on a rooftop helipad.","boss":"NIGHT HAWK","tint":Color("68cfff"),"difficulty":1.22,"reward":180},
 	{"name":"IRON FOUNDRY","detail":"A furnace hall. Watch for the pressure vents.","boss":"THE FOREMAN","tint":Color("ff9960"),"difficulty":1.32,"reward":220},
-	{"name":"DAWN TEMPLE","detail":"A mountain courtyard. The final master awaits.","boss":"THE SENTINEL","tint":Color("ffd277"),"difficulty":1.42,"reward":280}
+	{"name":"DAWN TEMPLE","detail":"A mountain courtyard. The final master awaits.","boss":"THE SENTINEL","tint":Color("ffd277"),"difficulty":1.42,"reward":280},
+ {"name":"THE RIFT","detail":"A sealed necropolis. The dead fight back.","boss":"THE BONE KING","tint":Color("b396ff"),"difficulty":1.3,"reward":240}
 ]
 const ABILITIES := [
 	{"id": "power", "title": "Heavy hands", "detail": "+25% punch damage per rank.", "tag": "POWER", "max": 4, "icon": "fist"},
@@ -43,7 +44,10 @@ const TRAINING := [
 	{"id": "health", "title": "Conditioning", "detail": "+10 starting health", "icon": "heart"},
 	{"id": "charge", "title": "Composure", "detail": "+10% starting special charge", "icon": "bolt"},
 	{"id": "footwork", "title": "Footwork", "detail": "+4% movement speed", "icon": "dash"},
-	{"id": "mastery", "title": "Skill mastery", "detail": "4% shorter technique cooldown", "icon": "crown"}
+	{"id": "mastery", "title": "Skill mastery", "detail": "Shorter skill cooldown", "icon": "crown"},
+	{"id":"grit","title":"Resilience","detail":"Reduce incoming damage","icon":"shield"},
+	{"id":"recovery","title":"Second wind","detail":"More health between waves","icon":"heart"},
+	{"id":"fortune","title":"Fight purse","detail":"More coins from fights","icon":"coin"}
 ]
 
 static func training_cost(level: int) -> int:

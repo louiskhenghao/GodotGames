@@ -11,6 +11,9 @@ func _draw() -> void:
 	var factor := minf(size.x, size.y) / 32.0
 	draw_set_transform(size * 0.5 - Vector2.ONE * 16 * factor, 0, Vector2.ONE * factor)
 	match kind:
+		"dumbbell":
+			line([Vector2(9,16),Vector2(23,16)])
+			for x in [5,10,22,27]:line([Vector2(x,7 if x in [10,22] else 10),Vector2(x,25 if x in [10,22] else 22)])
 		"skull":
 			line([Vector2(8,25),Vector2(8,21),Vector2(4,17),Vector2(4,9),Vector2(9,3),Vector2(23,3),Vector2(28,9),Vector2(28,17),Vector2(24,21),Vector2(24,25),Vector2(8,25)])
 			draw_circle(Vector2(10,13),3,tint);draw_circle(Vector2(22,13),3,tint)

@@ -5,3 +5,4 @@ export_credentials.cfg
 *.keystore
 *.mobileprovision
 .DS_Store
+/assets/fighters/source/spacekit/

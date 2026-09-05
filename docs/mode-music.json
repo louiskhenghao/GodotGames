@@ -1,0 +1,386 @@
+{
+  "fight": {
+    "title": "Corner Bell",
+    "style": "funk breaks / brass stabs",
+    "bpm": 128,
+    "meter": 4,
+    "roots": [
+      38,
+      34,
+      41,
+      36
+    ],
+    "bass": [
+      0,
+      0,
+      7,
+      10,
+      12,
+      7,
+      3,
+      5
+    ],
+    "lead": [
+      12,
+      15,
+      19,
+      17,
+      15,
+      12,
+      10,
+      7
+    ],
+    "sound": "brass",
+    "kick": [
+      0,
+      1.5,
+      2,
+      3.25
+    ],
+    "snare": [
+      1,
+      3
+    ],
+    "hats": 0.5
+  },
+  "blitz": {
+    "title": "Overdrive",
+    "style": "drum and bass / acid pluck",
+    "bpm": 174,
+    "meter": 4,
+    "roots": [
+      40,
+      43,
+      38,
+      35
+    ],
+    "bass": [
+      0,
+      12,
+      0,
+      7,
+      0,
+      3,
+      10,
+      7
+    ],
+    "lead": [
+      24,
+      19,
+      22,
+      15,
+      19,
+      12,
+      14,
+      22
+    ],
+    "sound": "acid",
+    "kick": [
+      0,
+      1.75,
+      2.5
+    ],
+    "snare": [
+      1,
+      3
+    ],
+    "hats": 0.25
+  },
+  "survival": {
+    "title": "After Hours",
+    "style": "trip hop / glass keys",
+    "bpm": 108,
+    "meter": 4,
+    "roots": [
+      36,
+      44,
+      39,
+      46
+    ],
+    "bass": [
+      0,
+      0,
+      7,
+      0,
+      10,
+      7,
+      3,
+      0
+    ],
+    "lead": [
+      19,
+      14,
+      15,
+      10,
+      12,
+      7,
+      14,
+      3
+    ],
+    "sound": "bell",
+    "kick": [
+      0,
+      2.75
+    ],
+    "snare": [
+      2
+    ],
+    "hats": 0.5
+  },
+  "onslaught": {
+    "title": "Iron March",
+    "style": "industrial march / metallic percussion",
+    "bpm": 136,
+    "meter": 4,
+    "roots": [
+      36,
+      37,
+      43,
+      41
+    ],
+    "bass": [
+      0,
+      0,
+      1,
+      0,
+      7,
+      0,
+      5,
+      1
+    ],
+    "lead": [
+      0,
+      7,
+      1,
+      0,
+      12,
+      7,
+      5,
+      1
+    ],
+    "sound": "metal",
+    "kick": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "snare": [
+      1.5,
+      3.5
+    ],
+    "hats": 0.25
+  },
+  "hell": {
+    "title": "Redline",
+    "style": "heavy power riffs / double kick",
+    "bpm": 148,
+    "meter": 4,
+    "roots": [
+      38,
+      41,
+      36,
+      37
+    ],
+    "bass": [
+      0,
+      0,
+      12,
+      0,
+      1,
+      0,
+      7,
+      6
+    ],
+    "lead": [
+      0,
+      7,
+      12,
+      1,
+      0,
+      6,
+      7,
+      0
+    ],
+    "sound": "fuzz",
+    "kick": [
+      0,
+      0.25,
+      0.5,
+      1.5,
+      2,
+      2.25,
+      2.5,
+      3.5
+    ],
+    "snare": [
+      1,
+      3
+    ],
+    "hats": 0.5
+  },
+  "bossrush": {
+    "title": "Main Event",
+    "style": "cinematic brass / timpani",
+    "bpm": 118,
+    "meter": 4,
+    "roots": [
+      33,
+      29,
+      40,
+      32
+    ],
+    "bass": [
+      0,
+      0,
+      7,
+      7,
+      12,
+      12,
+      7,
+      11
+    ],
+    "lead": [
+      12,
+      19,
+      24,
+      23,
+      19,
+      15,
+      14,
+      11
+    ],
+    "sound": "horn",
+    "kick": [
+      0,
+      2
+    ],
+    "snare": [
+      3
+    ],
+    "hats": 1
+  },
+  "ladder": {
+    "title": "Summit",
+    "style": "pentatonic plucks / hand drums",
+    "bpm": 124,
+    "meter": 4,
+    "roots": [
+      38,
+      43,
+      45,
+      41
+    ],
+    "bass": [
+      0,
+      7,
+      12,
+      7,
+      0,
+      7,
+      10,
+      7
+    ],
+    "lead": [
+      12,
+      14,
+      19,
+      21,
+      24,
+      21,
+      19,
+      14
+    ],
+    "sound": "wood",
+    "kick": [
+      0,
+      1.5,
+      2.75
+    ],
+    "snare": [
+      1,
+      2.5,
+      3.5
+    ],
+    "hats": 0.5
+  },
+  "classic": {
+    "title": "Last Bell",
+    "style": "arcade pulse / bright arpeggios",
+    "bpm": 150,
+    "meter": 4,
+    "roots": [
+      41,
+      38,
+      46,
+      48
+    ],
+    "bass": [
+      0,
+      12,
+      7,
+      12,
+      0,
+      12,
+      7,
+      19
+    ],
+    "lead": [
+      12,
+      16,
+      19,
+      24,
+      19,
+      16,
+      14,
+      19
+    ],
+    "sound": "chip",
+    "kick": [
+      0,
+      2,
+      2.75
+    ],
+    "snare": [
+      1,
+      3
+    ],
+    "hats": 0.25
+  },
+  "rift": {
+    "title": "Beyond the Gate",
+    "style": "dark waltz / spectral bells",
+    "bpm": 96,
+    "meter": 3,
+    "roots": [
+      36,
+      37,
+      44,
+      31
+    ],
+    "bass": [
+      0,
+      7,
+      12,
+      0,
+      1,
+      7
+    ],
+    "lead": [
+      24,
+      13,
+      19,
+      12,
+      25,
+      18
+    ],
+    "sound": "ghost",
+    "kick": [
+      0
+    ],
+    "snare": [
+      2
+    ],
+    "hats": 1
+  }
+}

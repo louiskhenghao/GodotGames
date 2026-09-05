@@ -8,9 +8,9 @@ const CHARACTERS := [
 	{"id":"volt", "name":"VOLT", "style":"THE LIVE WIRE", "price":420, "hp":95.0,"damage":17.0,"speed":4.8,"tempo":0.53,"move":"thunder","color":Color("6dbbff"),"passive":"Punches chain to a second opponent.","rank":"chain"},
 	{"id":"raven", "name":"RAVEN", "style":"THE NIGHT STRIKER", "price":550, "hp":90.0,"damage":23.0,"speed":4.6,"tempo":0.60,"move":"dragon","color":Color("ff6979"),"passive":"Recover health on every knockout.","rank":"leech"},
 	{"id":"sol", "name":"SOL", "style":"THE SUN CHAMPION", "price":700, "hp":105.0,"damage":19.0,"speed":4.4,"tempo":0.56,"move":"meteor","color":Color("ffd66e"),"passive":"Every punch ignites opponents.","rank":"burn"},
- {"id":"rattle","name":"RATTLE","style":"THE BONE BRAWLER","price":320,"hp":100.0,"damage":22.0,"speed":4.7,"tempo":.52,"move":"barrage","color":Color("e2d4a1"),"passive":"Fast fists. Starts with Quick combo.","rank":"speed","model":"rattle"},
- {"id":"shade","name":"SHADE","style":"THE REVENANT","price":480,"hp":90.0,"damage":24.0,"speed":5.2,"tempo":.58,"move":"dragon","color":Color("c5a2ff"),"passive":"Sharp strikes. Starts with Sweet spot.","rank":"crit","model":"shade"},
- {"id":"hex","name":"HEX","style":"THE STORMCALLER","price":620,"hp":120.0,"damage":17.0,"speed":4.1,"tempo":.66,"move":"thunder","color":Color("9aedcf"),"passive":"Chain lightning from the first punch.","rank":"chain","model":"hex"}
+	{"id":"aegis","name":"AEGIS","style":"THE IRON SENTINEL","price":1800,"hp":190.0,"damage":33.0,"speed":3.9,"tempo":.72,"move":"quake","color":Color("ffa36b"),"passive":"Armored machine. Two guard ranks; wider shockwaves.","rank":"armor","ranks":2,"range_bonus":.08},
+	{"id":"ion","name":"ION","style":"THE ARC RUNNER","price":2600,"hp":125.0,"damage":27.0,"speed":5.3,"tempo":.43,"move":"thunder","color":Color("8aefc2"),"passive":"Agile android. Two chain ranks; faster skill recharge.","rank":"chain","ranks":2,"cooldown_bonus":.08},
+	{"id":"onyx","name":"ONYX","style":"THE NOVA ENGINE","price":3600,"hp":165.0,"damage":38.0,"speed":4.4,"tempo":.57,"move":"meteor","color":Color("c29cff"),"passive":"Heavy reactor. Two burn ranks; stronger techniques.","rank":"burn","ranks":2,"skill_bonus":.12}
 ]
 const MOVES := [
 	{"id":"barrage","name":"HUNDRED HANDS","price":0,"cooldown":6.0,"detail":"A rapid six-punch combination that tracks the closest opponent.","icon":"fist"},
@@ -29,6 +29,8 @@ static func move(id: String) -> Dictionary:
 		if entry.id == id: return entry
 	return MOVES[0]
 static func owned(store: CoreSaveStore, category: String, id: String) -> bool:
+	if category == "character" and character(id).id!=id:return false
+	if category == "move" and move(id).id!=id:return false
 	if category == "character" and id == "atlas": return true
 	if category == "move":
 		if id == "quake": return true
@@ -41,11 +43,12 @@ static func unlock(store: CoreSaveStore, category: String, id: String) -> bool:
 	for entry in catalog:
 		if entry.id != id: continue
 		if owned(store,category,id): return true
-		if store.data.coins < entry.price: return false
-		var next := store.data.duplicate(true)
-		next.coins -= entry.price
-		if not next.progress.has("unlocks"): next.progress.unlocks = {}
-		next.progress.unlocks[category+":"+id] = true
+		if store.data.coins<entry.price:return false
+		var next:=store.data.duplicate(true)
+		next.coins-=entry.price
+		if not next.progress.has("unlocks"):next.progress.unlocks={}
+		next.progress.unlocks[category+":"+id]=true
+		RushAchievements.evaluate(next)
 		return store.commit(next)
 	return false
 static func equip(store: CoreSaveStore, category: String, id: String) -> bool:

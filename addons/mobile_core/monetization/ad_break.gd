@@ -30,12 +30,12 @@ func _ready() -> void:
 	heading.add_theme_color_override("font_color",Color("adbecd"))
 	col.add_child(heading)
 	var creative:=Label.new()
-	creative.text="TRAIN.\nFIGHT.\nRISE."
+	creative.text="PLAY.\nEXPLORE.\nENJOY."
 	creative.add_theme_font_size_override("font_size",56)
 	creative.add_theme_color_override("font_color",Color("f2cf83"))
 	col.add_child(creative)
 	var info:=Label.new()
-	info.text="Development preview. No real advertiser.\nWatch to the end to receive your reward." if rewarded else "Development preview. No real advertiser.\nYour fight is safely paused."
+	info.text="Development preview. No real advertiser.\nWatch to the end to receive your reward." if rewarded else "Development preview. No real advertiser.\nYour progress is safely paused."
 	info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	info.add_theme_font_size_override("font_size",18)
 	col.add_child(info)

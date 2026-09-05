@@ -4,7 +4,7 @@ func _initialize():call_deferred("run")
 func run():
  if DisplayServer.get_name()=="headless":push_error("Native renderer required");quit(1);return
  for id in ["rattle","shade","hex"]:
-  var fighter:=RushBoxer.new();root.add_child(fighter);fighter.build(true);fighter.set_character(id)
+  var fighter:=RushBoxer.new();root.add_child(fighter);fighter.build(true);fighter.authoring_creature=true;fighter.set_character(id)
   var library:=RushCrowdLibrary.new()
   for clip in CLIPS:
    var duration:float=fighter.animator.get_animation(clip).length

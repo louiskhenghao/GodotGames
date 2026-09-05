@@ -9,7 +9,7 @@ var key_light: DirectionalLight3D
 var canvas: MeshInstance3D
 var accents: Array[MeshInstance3D] = []
 var audience: MultiMeshInstance3D
-var showcase:Node3D
+var showcase:RushShowroom
 
 func _ready() -> void:
 	var world := WorldEnvironment.new()
@@ -118,14 +118,15 @@ func _ready() -> void:
 			child.scale*=Vector3(RushArenaLayout.SCALE,1,RushArenaLayout.SCALE)
 	venues.append(self)
 	_build_venues()
+	_build_rift()
 	_build_showcase()
 	showcase.visible=false
 
 func set_stage(index: int) -> void:
-	current_stage = clampi(index,0,4)
+	current_stage = clampi(index,0,5)
 	for node in ring_nodes: node.visible = current_stage == 0 and not in_showroom
 	for i in range(1,venues.size()): venues[i].visible = i == current_stage and not in_showroom
-	key_light.light_color = [Color("ffe7c0"),Color("cbbfff"),Color("b9daff"),Color("ffcc9e"),Color("ffe4b6")][current_stage]
+	key_light.light_color = [Color("ffe7c0"),Color("cbbfff"),Color("b9daff"),Color("ffcc9e"),Color("ffe4b6"),Color("cec5ff")][current_stage]
 	set_quality(MobileCore.save.data.settings.get("low_quality",false))
 
 func set_quality(low: bool) -> void:
@@ -135,6 +136,7 @@ func set_quality(low: bool) -> void:
 func showroom(enabled: bool) -> void:
 	in_showroom = enabled
 	set_stage(current_stage)
+	if enabled:key_light.light_color=Color("ffe7d1")
 
 func _batch(parent: Node3D, parts: Array, detail:int=8) -> void:
 	var mesh := MeshInstance3D.new()
@@ -329,31 +331,35 @@ func _populate(parent:Node3D,index:int) -> void:
 	parent.add_child(crowd)
 
 func _build_showcase() -> void:
-	showcase=Node3D.new()
-	add_child(showcase)
-	var parts:Array=[]
-	parts.append(RushModelFactory.piece("box",Vector3(90,.2,90),Vector3(0,-.5,0),Color("172b34")))
-	parts.append(RushModelFactory.piece("box",Vector3(16,7,.3),Vector3(0,2.8,-4.5),Color("243947")))
-	for i in 15:
-		parts.append(RushModelFactory.piece("box",Vector3(16,.024,.02),Vector3(0,.2+i*.36,-4.33),Color("2e4450")))
-	for x in [-5.5,5.5]:
-		parts.append(RushModelFactory.piece("box",Vector3(.25,6,.35),Vector3(x,2.4,-3.5),Color("445963")))
-		parts.append(RushModelFactory.piece("box",Vector3(.10,2.4,.12),Vector3(x,3.2,-3.25),Color("aacbb8")))
-		parts.append(RushModelFactory.piece("box",Vector3(3,.24,.8),Vector3(x,.4,-2.9),Color("5c655a")))
-		for foot in [-.9,.9]:parts.append(RushModelFactory.piece("box",Vector3(.12,.8,.7),Vector3(x+foot,0,-2.9),Color("283d48")))
-	for x in [-3.4,3.6]:
-		parts.append(RushModelFactory.piece("box",Vector3(.055,1.1,.055),Vector3(x,3.5,-2.5),Color("819190")))
-		parts.append(RushModelFactory.piece("cylinder",Vector3(.62,1.8,.62),Vector3(x,2.05,-2.5),Color("8c4f43") if x<0 else Color("375f67")))
-		parts.append(RushModelFactory.piece("box",Vector3(.50,.20,.04),Vector3(x,2.45,-2.18),Color("b69e78")))
-	for x in [-6.8,6.8]:
-		for i in 4:
-			parts.append(RushModelFactory.piece("box",Vector3(.65,2.3,.5),Vector3(x+i*.72,1,-4),Color("34464d")))
+	showcase=RushShowroom.new();add_child(showcase)
+	showcase.select_fighter("atlas")
 
-	_batch(showcase,parts,16)
-	_sign(showcase,"RING RUSH",Vector3(0,3.5,-4.25),Color("9eb7b4"))
-	_sign(showcase,"BOXING CLUB",Vector3(0,3.0,-4.23),Color("637b82"))
-	for item in showcase.get_children():
-		if item is Label3D:item.pixel_size=.0055
+func _build_rift() -> void:
+	var venue:=Node3D.new();venue.name="RiftNecropolis";add_child(venue);venues.append(venue)
+	_floor(venue,5,Color("322d46"))
+	var parts:Array=[]
+	parts.append(RushModelFactory.piece("box",Vector3(90,.2,90),Vector3(0,-.6,0),Color("151824")))
+	for i in 16:
+		var a:=i*TAU/16
+		var at:=Vector3(cos(a)*9.5,0,sin(a)*9.5)
+		parts.append(RushModelFactory.piece("box",Vector3(.7,1.5,.4),at+Vector3.UP*.55,Color("65717d")))
+		parts.append(RushModelFactory.piece("box",Vector3(1.0,.24,.46),at+Vector3.UP*.9,Color("8c94a3")))
+		parts.append(RushModelFactory.piece("sphere",Vector3(.32,.42,.32),at+Vector3(0,1.7,0),Color("b8a0ec")))
+	for obstacle in RushArenaLayout.base_blockers(5):
+		var at:=Vector3(obstacle.x,0,obstacle.y)
+		parts.append(RushModelFactory.piece("cylinder",Vector3(1.7,.65,1.7),at+Vector3.UP*.28,Color("555c72")))
+		parts.append(RushModelFactory.piece("sphere",Vector3(.6,1.3,.6),at+Vector3.UP,Color("a28dd5")))
+	for x in [-2.8,2.8]:parts.append(RushModelFactory.piece("box",Vector3(.8,4,.8),Vector3(x,1.8,-8),Color("5b6077")))
+	parts.append(RushModelFactory.piece("box",Vector3(6.5,.7,1),Vector3(0,4,-8),Color("77718f")))
+	_batch(venue,parts,12)
+	for radius in [3.0,5.7,7.7]:
+		var ring:=MeshInstance3D.new();var torus:=TorusMesh.new()
+		torus.inner_radius=radius;torus.outer_radius=radius+.06;torus.rings=64;torus.ring_segments=4
+		ring.mesh=torus;ring.position.y=.025;ring.scale.y=.1
+		ring.material_override=RushBoxer.material(Color("a48ad9"));ring.material_override.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+		venue.add_child(ring)
+	_sign(venue,"THE RIFT",Vector3(0,2.7,-7.9),Color("dbc3fa"))
+	venue.scale=Vector3(RushArenaLayout.SCALE,1,RushArenaLayout.SCALE);venue.visible=false
 
 func _build_surroundings(parent:Node3D,index:int) -> void:
 	var parts:Array=[]

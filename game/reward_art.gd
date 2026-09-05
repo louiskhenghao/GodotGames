@@ -4,15 +4,21 @@ extends Control
 var kind:="coin"
 var tint:=Color("ffc466")
 var level:=-1
+var symbol:RushIcon
 func _ready() -> void:
  mouse_filter=Control.MOUSE_FILTER_IGNORE
  resized.connect(queue_redraw)
+ resized.connect(_layout)
  if not kind.begins_with("coins_"):
-  var symbol:=RushIcon.new();symbol.kind=kind;symbol.tint=tint
-  symbol.custom_minimum_size=Vector2(60,60)
+  symbol=RushIcon.new();symbol.kind=kind;symbol.tint=tint
   add_child(symbol)
-  symbol.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-  symbol.offset_left=-30;symbol.offset_right=30;symbol.offset_top=-35;symbol.offset_bottom=25
+  _layout.call_deferred()
+func _layout() -> void:
+ if symbol==null:return
+ var side:=clampf(size.y-16,38,60)
+ symbol.custom_minimum_size=Vector2.ONE*side;symbol.size=Vector2.ONE*side
+ symbol.position=(size-symbol.size)*.5-Vector2(0,4)
+
 func _draw() -> void:
  var center:=size*.5
  if kind.begins_with("coins_"):

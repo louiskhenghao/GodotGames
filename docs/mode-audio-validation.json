@@ -1,0 +1,47 @@
+{
+  "fight": {
+    "seconds": 30.0,
+    "peak": 0.8579,
+    "sha256": "ad4155455ee3c42bdf0d4f0fe336fc6a65354616a86765fa89b8b79af9dacdff"
+  },
+  "blitz": {
+    "seconds": 22.071,
+    "peak": 0.8582,
+    "sha256": "ebcf9ea652ded7adf92467e600a84069b979dd3b423e3a7a97b38cf449030a81"
+  },
+  "survival": {
+    "seconds": 35.556,
+    "peak": 0.8481,
+    "sha256": "0c24784984d50a3b143ef95f1a1ffb4d74f7ebcac82dcbadaec23dc66b2e7959"
+  },
+  "onslaught": {
+    "seconds": 28.235,
+    "peak": 0.87,
+    "sha256": "ff57145ceadefbdbb98aba981a65f0ea76a9f25fad80587cf6289761378e9dd9"
+  },
+  "hell": {
+    "seconds": 25.948,
+    "peak": 0.8824,
+    "sha256": "f21f2a6bd866bedec8af82726577e9067429f9bedee28beaf2845783a3cc5c5b"
+  },
+  "bossrush": {
+    "seconds": 32.543,
+    "peak": 0.8613,
+    "sha256": "53c51673d8dad4beff18a8afc7306a8c4b5019e0fe53e294f586daf8fbc104b1"
+  },
+  "ladder": {
+    "seconds": 30.97,
+    "peak": 0.8607,
+    "sha256": "ce485ffce64a74dab3c7fc32774cf8022f0a752ddfed73c878944375ba8ee985"
+  },
+  "classic": {
+    "seconds": 25.6,
+    "peak": 0.8591,
+    "sha256": "b5af91823dc26d8975e609b0a4b467b1ac819c081347339dbdee70de8dca25f1"
+  },
+  "rift": {
+    "seconds": 30.0,
+    "peak": 0.8551,
+    "sha256": "dc88244e0ff0e95665c929503cb1fd497177cb971e15da25571ba14c2e8d91a3"
+  }
+}

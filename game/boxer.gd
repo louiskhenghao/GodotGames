@@ -76,6 +76,10 @@ var skin_mesh: MeshInstance3D
 var outfit: MeshInstance3D
 var gloves: Array[MeshInstance3D] = []
 var character_id := "atlas"
+var mech_head:Node3D
+var mech_arms:Array[Node3D]=[]
+var mech_fists:Array[Node3D]=[]
+var authoring_creature:=false # Only the offline crowd-baking tool sets this.
 var slam_time := 0.0
 var spin_time := 0.0
 var launch_time := 0.0
@@ -89,7 +93,6 @@ func build(is_hero: bool, elite: bool = false) -> void:
 		if variants.is_empty():
 			variants["raven"]=load("res://assets/fighters/crowd_raven.res")
 			variants["titan"]=load("res://assets/fighters/crowd_titan.res")
-			for id in ["rattle","shade","hex"]:variants[id]=load("res://assets/fighters/crowd_"+id+".res")
 		crowd_poses=crowd_library
 		body=Node3D.new()
 		body.rotation.y=PI
@@ -149,7 +152,7 @@ static func clothing(source: Mesh, shirt: bool, style_id: String = "") -> ArrayM
 	outfits[key] = mesh
 	return mesh
 
-func configure(kind: String) -> void:
+func configure(kind: String, creature_boss:bool=false) -> void:
 	dying=false
 	death_clock=0
 	flash_time=0
@@ -163,17 +166,19 @@ func configure(kind: String) -> void:
 	rush_hit=false
 	if not hero:
 		var variant:String="raven" if kind in ["runner","spark"] else ("titan" if kind in ["brute","boss","charger","guard"] else "atlas")
+		if kind=="boss" and creature_boss:variant="hex"
 		variant={"bone":"rattle","revenant":"shade","hexer":"hex"}.get(kind,variant)
+		if variant!="atlas" and not variants.has(variant):variants[variant]=load("res://assets/fighters/crowd_"+variant+".res")
 		crowd_poses=crowd_library if variant=="atlas" else variants[variant]
 		crowd_mesh.mesh=crowd_poses.clips.Idle[0]
 		var skin:StandardMaterial3D=crowd_mesh.get_surface_override_material(0)
-		skin.albedo_texture=load("res://assets/fighters/kaykit/skeleton_texture.png") if kind in ["bone","revenant","hexer"] else load("res://assets/fighters/T_Superhero_Female_Dark_BaseColor.png" if variant=="raven" else "res://assets/fighters/T_Superhero_Male_Dark.png")
-	if hero and not is_creature(): outfit.mesh = clothing(skin_mesh.mesh, character_id != "atlas",character_id)
+		skin.albedo_texture=load("res://assets/fighters/kaykit/skeleton_texture.png") if variant in ["rattle","shade","hex"] else load("res://assets/fighters/T_Superhero_Female_Dark_BaseColor.png" if variant=="raven" else "res://assets/fighters/T_Superhero_Male_Dark.png")
+	if hero and not is_creature() and not is_mech(): outfit.mesh = clothing(skin_mesh.mesh, character_id != "atlas",character_id)
 	var tint: Color = RushRoster.character(character_id).color if hero else {"rookie":Color("d74f52"),"runner":Color("6886d6"),"brute":Color("c59245"),"boss":Color("8c63b3"),"charger":Color("ef624b"),"spark":Color("72ceff"),"guard":Color("59bfb2"),"bone":Color("e2d4a1"),"revenant":Color("c5a2ff"),"hexer":Color("9aedcf")}.get(role,Color("d74f52"))
 	var cloth := material(tint)
 	cloth.vertex_color_use_as_albedo = true
 	if hero:
-		if not is_creature():outfit.material_override = cloth
+		if not is_creature() and not is_mech():outfit.material_override = cloth
 	else:
 		cloth.shading_mode=BaseMaterial3D.SHADING_MODE_PER_VERTEX
 		crowd_mesh.set_surface_override_material(1,cloth)
@@ -208,11 +213,12 @@ func configure(kind: String) -> void:
 		crowd_mesh.mesh=crowd_poses.clips.Idle[0]
 
 func set_character(id: String) -> void:
+	if not authoring_creature:id=RushRoster.character(id).id
 	if character_id != id:
 		character_id = id
 		remove_child(body)
 		body.queue_free()
-		gloves.clear()
+		gloves.clear();mech_arms.clear();mech_fists.clear()
 		_build_hero()
 	configure("hero")
 
@@ -240,6 +246,13 @@ func animate(delta: float, moving: bool) -> void:
 		var frame := mini(frames.size()-1,int(fmod(crowd_time,duration)/duration*frames.size()))
 		crowd_mesh.mesh=frames[frame]
 		return
+	if is_mech():
+		var head_pose:Transform3D=body.global_transform.affine_inverse()*skeleton.global_transform*skeleton.get_bone_global_pose(skeleton.find_bone("Head"))
+		mech_head.position=head_pose.origin+Vector3.UP*.12
+		for i in mech_arms.size():
+			var strike:float=sin(clampf(punch_time/.34,0,1)*PI) if (alternate and i==0) or (not alternate and i==1) else 0.0
+			mech_arms[i].rotation.x=-.15-strike*.55+(sin(phase*8+i*PI)*.18 if moving else 0)
+			mech_fists[i].position.z=.20+strike*.55
 	if animator.current_animation != clip:
 		animator.play(clip,.10,1.7 if punch_time > 0 else 1.0)
 	animator.advance(delta)
@@ -257,17 +270,28 @@ func set_gold(enabled: bool) -> void:
 	var tint: Color = Color("e9b741") if gold else RushRoster.character(character_id).color
 	for glove in gloves: glove.material_override.albedo_color = tint
 
+func is_mech() -> bool:return character_id in ["aegis","ion","onyx"]
+
 func is_creature() -> bool:
-	return RushRoster.character(character_id).has("model")
+	return authoring_creature and character_id in ["rattle","shade","hex"]
 
 func _build_hero() -> void:
-	if is_creature():body=load("res://assets/fighters/kaykit/"+RushRoster.character(character_id).model+".scn").instantiate()
+	if is_mech():
+		body=Node3D.new()
+		body.add_child(load("res://assets/fighters/mechs/"+character_id+".scn").instantiate())
+	elif is_creature():body=load("res://assets/fighters/kaykit/"+character_id+".scn").instantiate()
 	else:body = (load("res://assets/fighters/boxer_female.gltf") if RushWardrobe.female(character_id) else HUMAN).instantiate()
 	add_child(body)
 	body.rotation.y = PI
 	skeleton = body.find_child("Skeleton3D", true, false)
 	animator = body.find_child("AnimationPlayer", true, false)
 	animator.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	if is_mech():
+		skin_mesh=body.find_children("*","MeshInstance3D",true,false)[0]
+		outfit=skin_mesh
+		_build_mech_arms()
+		_build_mech_head()
+		return
 	if is_creature():
 		for mesh:MeshInstance3D in body.find_children("*","MeshInstance3D",true,false):
 			if "Body" in mesh.name:skin_mesh=mesh;break
@@ -352,3 +376,38 @@ func _set_crowd_alpha(alpha:float) -> void:
 		if mat==null:continue
 		mat.transparency=BaseMaterial3D.TRANSPARENCY_DISABLED if alpha>=1 else BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.albedo_color.a=alpha
+
+func _build_mech_arms() -> void:
+	var tint:Color=RushRoster.character(character_id).color
+	var heavy:float=1.18 if character_id=="aegis" else (1.08 if character_id=="onyx" else .88)
+	for side in [-1,1]:
+		var arm:=Node3D.new();body.add_child(arm);arm.position=Vector3(side*{"aegis":.77,"ion":.92,"onyx":.83}[character_id],1.3,0)
+		var upper:=MeshInstance3D.new();upper.mesh=RushModelFactory.bake([
+			RushModelFactory.piece("box",Vector3(.32,.24,.29)*heavy,Vector3.ZERO,tint.darkened(.15)),
+			RushModelFactory.piece("cylinder",Vector3(.15,.38,.15)*heavy,Vector3(0,-.22,0),Color("4f6375")),
+			RushModelFactory.piece("sphere",Vector3.ONE*.18,Vector3(0,-.39,0),Color("b6c9d6"))],12)
+		arm.add_child(upper)
+		var fist:=Node3D.new();arm.add_child(fist);fist.position=Vector3(0,-.29,.20)
+		var gauntlet:=MeshInstance3D.new();gauntlet.mesh=RushModelFactory.bake([
+			RushModelFactory.piece("box",Vector3(.22,.22,.32)*heavy,Vector3(0,0,-.08),Color("4a5c70")),
+			RushModelFactory.piece("sphere",Vector3(.34,.32,.36)*heavy,Vector3(0,.07,.13),Color.WHITE),
+			RushModelFactory.piece("box",Vector3(.22,.055,.05)*heavy,Vector3(0,.10,.30),Color("d9ffff"))],12)
+		gauntlet.material_override=material(tint);fist.add_child(gauntlet);gloves.append(gauntlet)
+		mech_arms.append(arm);mech_fists.append(fist)
+
+func _build_mech_head() -> void:
+	mech_head=Node3D.new();body.add_child(mech_head)
+	var tint:Color=RushRoster.character(character_id).color
+	var pieces:Array=[]
+	var wide:float=.52 if character_id=="aegis" else .43
+	pieces.append(RushModelFactory.piece("sphere",Vector3(wide,.43,.43),Vector3.ZERO,Color("536879")))
+	pieces.append(RushModelFactory.piece("box",Vector3(wide*.86,.17,.07),Vector3(0,.015,.195),Color("101f31")))
+	pieces.append(RushModelFactory.piece("box",Vector3(wide*.66,.045,.025),Vector3(0,.03,.24),tint.lightened(.45)))
+	for side in [-1,1]:
+		pieces.append(RushModelFactory.piece("box",Vector3(.09,.30,.28),Vector3(side*wide*.46,0,0),tint))
+	if character_id=="ion":pieces.append(RushModelFactory.piece("box",Vector3(.055,.28,.1),Vector3(.13,.27,-.06),tint))
+	if character_id=="onyx":
+		for side in [-1,1]:pieces.append(RushModelFactory.piece("box",Vector3(.06,.22,.09),Vector3(side*.23,.23,-.08),tint))
+	var model:=MeshInstance3D.new();model.mesh=RushModelFactory.bake(pieces,12);mech_head.add_child(model)
+	var pose:Transform3D=body.global_transform.affine_inverse()*skeleton.global_transform*skeleton.get_bone_global_pose(skeleton.find_bone("Head"))
+	mech_head.position=pose.origin+Vector3.UP*.12

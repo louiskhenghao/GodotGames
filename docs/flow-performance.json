@@ -1,0 +1,12 @@
+{
+  "character": "atlas",
+  "draw_calls": 401.0,
+  "enemies": 48,
+  "median_frame_ms": 2.959,
+  "nodes": 463.0,
+  "p95_frame_ms": 3.598,
+  "primitives": 684388.0,
+  "stage": 5,
+  "stress": true,
+  "viewport": "(540.0, 960.0)"
+}

@@ -25,6 +25,8 @@ var special_button: Button
 var buttons: Array[Button] = []
 var fighter_index:=0
 var move_index:=0
+var gym_filter:="ALL"
+var badge_filter:="ALL"
 var rotation_finger:=-1
 var mouse_rotating:=false
 var upgrade_overlay:Control
@@ -68,6 +70,7 @@ func _ready() -> void:
 	message.add_theme_stylebox_override("normal", style(Color("147b72"), 12))
 	message.visible = false
 	root.add_child(message)
+	MobileCore.notices.posted.connect(_present_notice)
 	MobileCore.commerce.completed.connect(_commerce_completed)
 	MobileCore.commerce.busy_changed.connect(_busy)
 	get_viewport().size_changed.connect(_safe_area)
@@ -184,8 +187,7 @@ func button(text: String, action: Callable, primary: bool = false, glyph: String
 		var symbol := icon(glyph, INK if primary else TEAL)
 		node.add_child(symbol)
 		symbol.size = Vector2(32,32)
-		node.resized.connect(func():_place_glyph(node,symbol))
-		node.tree_entered.connect(func():_place_glyph.call_deferred(node,symbol))
+		CoreButtonLayout.install(node,symbol)
 		node.set_meta("glyph",symbol)
 		node.set_meta("glyph_tint",symbol.tint)
 	if action.is_valid(): node.pressed.connect(action)
@@ -193,10 +195,7 @@ func button(text: String, action: Callable, primary: bool = false, glyph: String
 	return node
 
 func _place_glyph(b,symbol) -> void:
-	if not is_instance_valid(b) or not is_instance_valid(symbol):return
-	if b.get_meta("nav_tile",false):symbol.position=Vector2((b.size.x-symbol.size.x)*.5,12)
-	elif b.text.is_empty():symbol.position=(b.size-symbol.size)*.5
-	else:symbol.position=Vector2(18,(b.size.y-symbol.size.y)*.5)
+	CoreButtonLayout.place(b,symbol)
 
 func clear(page_name: String = "") -> void:
 	_remove_upgrade()
@@ -205,7 +204,7 @@ func clear(page_name: String = "") -> void:
 	toast_time=0
 	message.visible=false
 	game.player.visible=page_name in ["home","fighters","move_demo","playing"]
-	game.podium.visible=game.mode=="home" and page_name in ["home","fighters","move_demo"]
+	game.podium.visible=game.mode=="home" and page_name in ["home","fighters"]
 	game.arena.showcase.visible=game.podium.visible
 	MobileCore.commerce.provider.set_banner(false)
 	if not page_name.is_empty(): current_page = page_name
@@ -264,60 +263,45 @@ func home() -> void:
 	var options_button:=button("",settings,false,"gear")
 	options_button.custom_minimum_size=Vector2(50,50)
 	header.add_child(options_button)
-	var name_plate:=column(.64,.72)
-	var fighter_name:=label(game.selected_character().name,34,PAPER,true)
-	fighter_name.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	name_plate.add_child(fighter_name)
-	var loadout:=label(RushRoster.visual(game.selected_move()).short,16,RushRoster.visual(game.selected_move()).color)
-	loadout.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-	name_plate.add_child(loadout)
-	var bottom:=column(1,1)
-	bottom.offset_top=-202 if not game.ads_removed() else -156
-	bottom.offset_bottom=-62 if not game.ads_removed() else -20
-	var challenge:=button(RushWaveDirector.mode_info(game.run_mode).name+"  /  CHANGE",circuits,false,"crown")
-	challenge.custom_minimum_size.y=48
-	challenge.add_theme_font_size_override("font_size",21)
-	bottom.add_child(challenge)
-	var play:=button("RESUME FIGHT" if game.has_resume() else "PLAY",game.resume_saved_run if game.has_resume() else game.start_run,true,"play")
-	play.custom_minimum_size.y=66
-	play.add_theme_font_size_override("font_size",30)
-	bottom.add_child(play)
-	var nav:=VBoxContainer.new()
-	nav.name="SideNavigation"
-	nav.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
-	nav.offset_left=-94
-	nav.offset_right=-20
-	nav.offset_top=-144
-	nav.offset_bottom=144
-	nav.add_theme_constant_override("separation",12)
-	screen.add_child(nav)
-	for entry in [["FIGHTER",fighters,"fist"],["SKILLS",moves,"bolt"],["SHOP",shop,"coin"]]:
-		var b:=button("",entry[1],false,entry[2])
-		b.name=entry[0]
-		b.tooltip_text=entry[0]
-		b.custom_minimum_size=Vector2(74,78)
-		b.set_meta("nav_tile",true)
-		var caption:=label(entry[0],16,PAPER,true)
+	var badges:=button("",achievements,false,"crown");badges.name="HomeBadges";badges.custom_minimum_size=Vector2(50,50);header.add_child(badges)
+	var dock:=column(1,1)
+	dock.offset_top=-330 if not game.ads_removed() else -286
+	dock.offset_bottom=-64 if not game.ads_removed() else -20
+	dock.add_theme_constant_override("separation",16)
+	var identity:=row();identity.name="FighterIdentity";dock.add_child(identity)
+	var who:=VBoxContainer.new();who.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	identity.add_child(who)
+	who.add_child(label(game.selected_character().name,40,PAPER,true))
+	who.add_child(label(game.selected_character().style,13,MUTED))
+	var move:=RushRoster.visual(game.selected_move())
+	var signature:=row();signature.alignment=BoxContainer.ALIGNMENT_END
+	signature.size_flags_vertical=Control.SIZE_SHRINK_CENTER;identity.add_child(signature)
+	signature.add_child(icon(move.icon,move.color,30))
+	signature.add_child(label(move.short,19,move.color,true))
+	var nav:=HBoxContainer.new();nav.name="SideNavigation"
+	nav.add_theme_constant_override("separation",10);dock.add_child(nav)
+	for entry in [["FIGHTER",fighters,"fist",Color("68ead1"),Color("163d40")],["SKILLS",moves,"bolt",Color("c9a6ff"),Color("342847")],["GYM",training,"dumbbell",Color("ffad87"),Color("4a302e")],["SHOP",shop,"coin",Color("ffdb7b"),Color("443b25")]]:
+		var b:=button("",entry[1],false,entry[2]);b.name=entry[0]
+		b.custom_minimum_size=Vector2(0,78);b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		b.set_meta("nav_tile",true);b.set_meta("glyph_tint",entry[3])
+		for state in ["normal","hover","pressed"]:
+			var surface:=style(entry[4].lightened(.12) if state=="hover" else entry[4],12)
+			b.add_theme_stylebox_override(state,surface)
+		var caption:=label(entry[0],17,PAPER,true)
 		caption.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 		caption.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		caption.offset_top=-30
-		caption.offset_bottom=-8
-		caption.mouse_filter=Control.MOUSE_FILTER_IGNORE
-		b.add_child(caption)
-		nav.add_child(b)
-	var gym:=button("GYM",training,false,"fist")
-	gym.name="TrainingShortcut"
-	gym.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	gym.offset_left=20;gym.offset_right=114;gym.offset_top=85;gym.offset_bottom=135
-	gym.custom_minimum_size.y=50
-	screen.add_child(gym)
+		caption.offset_top=-30;caption.offset_bottom=-8;caption.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		b.add_child(caption);nav.add_child(b)
+	var play:=button("RESUME FIGHT" if game.has_resume() else "PLAY",game.resume_saved_run if game.has_resume() else circuits,true,"play")
+	play.name="HomePlay";play.custom_minimum_size.y=66;play.add_theme_font_size_override("font_size",30)
+	dock.add_child(play)
 	MobileCore.commerce.provider.set_banner(not game.ads_removed())
 
-func showroom_header(title: String) -> void:
+func showroom_header(title: String,back_action:Callable=Callable()) -> void:
 	var top:=column(.035,.14)
 	var header:=row()
 	top.add_child(header)
-	var back:=button("",game.go_home,false,"back")
+	var back:=button("",back_action if back_action.is_valid() else game.go_home,false,"back")
 	back.custom_minimum_size=Vector2(52,52)
 	header.add_child(back)
 	var text:=label(title,34,PAPER,true)
@@ -444,7 +428,7 @@ func update_stats() -> void:
 	dash_button.meter=1-game.dash_clock/maxf(.1,3.8-game.rank_of("dash")*.6)
 	dash_button.value="%.1f"%game.dash_clock if game.dash_clock>0 else ""
 	technique_button.disabled=game.technique_clock>0
-	technique_button.meter=1-game.technique_clock/RushRoster.move(game.technique_id).cooldown
+	technique_button.meter=1-game.technique_clock/game.technique_cooldown()
 	technique_button.value="%.1f"%game.technique_clock if game.technique_clock>0 else ""
 	special_button.disabled=game.special_charge<100
 	special_button.meter=game.special_charge/100
@@ -634,6 +618,8 @@ func result(won: bool, saved: bool) -> void:
 	col.add_child(label("%d COINS"%game.run_coins,50,AMBER,true))
 	col.add_child(label("%d WAVES   ·   %d KNOCKOUTS"%[game.completed_waves,game.kills],18,MUTED))
 	spacer(col,22)
+	if saved and not MobileCore.save.data.progress.get("last_badges",[]).is_empty():
+		col.add_child(button("%d NEW BADGES"%MobileCore.save.data.progress.last_badges.size(),achievements,false,"crown"))
 	if saved:
 		if won:
 			var claimed:bool=game.result_bonus_claimed()
@@ -662,7 +648,7 @@ func revive_offer() -> void:
 
 func move_demo(id:String) -> void:
 	clear("move_demo")
-	showroom_header("TRY A SKILL")
+	showroom_header("TRY A SKILL",func():moves(true))
 	var visual:=RushRoster.visual(id)
 	var bottom:=column(.70,.96)
 	bottom.add_child(label(visual.short,34,visual.color,true))
@@ -671,18 +657,18 @@ func move_demo(id:String) -> void:
 	bottom.add_child(button("BACK TO SKILLS",func():game._clear_combat();moves(true)))
 
 func circuits(keep_index:bool=false) -> void:
-	if not keep_index:venue_index=game.stage
+	if not keep_index:venue_index=5 if game.run_mode=="rift" else mini(4,game.stage)
 	clear("circuits")
 	game.preview_venue(venue_index)
 	_veil(0,.18,.90,0)
 	showroom_header("CHOOSE A FIGHT")
 	var deck:=RushMenuBackdrop.new()
 	deck.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	deck.anchor_top=.45;deck.offset_top=0
+	deck.anchor_top=.41;deck.offset_top=0
 	screen.add_child(deck)
 	var scroll:=ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scroll.anchor_top=.47;scroll.offset_top=0;scroll.offset_bottom=-130
+	scroll.anchor_top=.43;scroll.offset_top=0;scroll.offset_bottom=-130
 	scroll.offset_left=28;scroll.offset_right=-28
 	scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
 	screen.add_child(scroll)
@@ -699,19 +685,22 @@ func circuits(keep_index:bool=false) -> void:
 	select.add_child(name)
 	var right:=button("",func():cycle_venue(1),false,"right")
 	right.custom_minimum_size=Vector2(52,52);select.add_child(right)
-	left.disabled=game.run_mode=="ladder";right.disabled=game.run_mode=="ladder"
-	var unlocked:bool=venue_index<=int(MobileCore.save.data.progress.get("unlocked_stage",0))
-	col.add_child(body_text("5 VENUES" if game.run_mode=="ladder" else ("SELECT YOUR CHALLENGE" if unlocked else "LOCKED · Clear the previous venue"),14,TEAL if unlocked else AMBER))
+	left.disabled=game.run_mode in ["ladder","rift"];right.disabled=left.disabled
+	var unlocked:bool=RushChallenges.available(MobileCore.save,game.run_mode,venue_index)
 	var grid:=GridContainer.new();grid.columns=2
 	grid.add_theme_constant_override("h_separation",10);grid.add_theme_constant_override("v_separation",10)
 	col.add_child(grid)
 	for mode in RushWaveDirector.MODES:
+		if mode.id=="rift":continue
 		var b:=button(mode.name,func():select_challenge(mode.id),game.run_mode==mode.id,mode.icon)
 		b.name="Mode_"+mode.id
 		b.add_theme_font_size_override("font_size",20)
 		b.custom_minimum_size.y=52;b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 		grid.add_child(b)
-	col.add_child(body_text(RushWaveDirector.mode_info(game.run_mode).detail,15))
+	var secret:=button("THE RIFT" if RushChallenges.rift_open(MobileCore.save) else "SEALED ENCOUNTER",func():select_challenge("rift"),game.run_mode=="rift","skull" if RushChallenges.rift_open(MobileCore.save) else "lock")
+	secret.name="SecretMode";secret.custom_minimum_size.y=46;secret.add_theme_font_size_override("font_size",20)
+	col.add_child(secret)
+	col.add_child(body_text("Clear the previous venue to enter" if not unlocked and game.run_mode!="rift" else RushWaveDirector.mode_info(game.run_mode).detail+(" / CONTRACT +25%" if game.challenge_contract else ""),15))
 	var footer:=column(1,1)
 	footer.offset_top=-100;footer.offset_bottom=-28
 	if game.has_resume():
@@ -721,13 +710,20 @@ func circuits(keep_index:bool=false) -> void:
 			b.add_theme_font_size_override("font_size",20);b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 			saved.add_child(b)
 	else:
-		var done:=button("USE THIS FIGHT" if unlocked else "VENUE LOCKED",func():game.stage=venue_index;game.go_home(),true,"play" if unlocked else "lock")
-		done.name="ConfirmFight";done.disabled=not unlocked
+		var sealed:bool=game.run_mode=="rift" and not unlocked
+		var done:=button("UNLOCK RIFT  /  %d COINS"%RushChallenges.SECRET_COST if sealed else ("FIGHT" if unlocked else "VENUE LOCKED"),func():
+			if sealed:
+				if RushChallenges.unlock_rift(MobileCore.save):circuits(true)
+				else:toast("Need 600 coins or free storage.")
+			else:game.stage=venue_index;game.start_run(),true,"lock" if not unlocked else "play")
+		done.name="ConfirmFight";done.disabled=(MobileCore.save.data.coins<RushChallenges.SECRET_COST) if sealed else not unlocked
 		footer.add_child(done)
 
 func select_challenge(id:String) -> void:
 	game.run_mode=id
 	if id=="ladder":venue_index=0
+	elif id=="rift":venue_index=5
+	elif venue_index==5:venue_index=mini(4,game.stage)
 	circuits(true)
 
 func cycle_venue(direction:int) -> void:
@@ -766,8 +762,8 @@ func fighters(keep_index: bool=false) -> void:
 	name.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	heading.add_child(name)
 	heading.add_child(label("%d / %d"%[fighter_index+1,RushRoster.CHARACTERS.size()],17,MUTED))
-	attribute_line(info,"POWER",fighter.damage,30,str(int(fighter.damage)),fighter.color)
-	attribute_line(info,"HEALTH",fighter.hp,160,str(int(fighter.hp)),fighter.color)
+	attribute_line(info,"POWER",fighter.damage,40,str(int(fighter.damage)),fighter.color)
+	attribute_line(info,"HEALTH",fighter.hp,200,str(int(fighter.hp)),fighter.color)
 	attribute_line(info,"SPEED",fighter.speed,6,"%.1f"%fighter.speed,fighter.color)
 	var visual:=RushRoster.visual(fighter.move)
 	var move_line:=row()
@@ -794,74 +790,62 @@ func moves(keep_index: bool=false) -> void:
 			if RushRoster.MOVES[i].id==game.selected_move():move_index=i
 	clear("moves")
 	game.preview_character(game.selected_character().id)
-	game.player.visible=false
-	game.podium.visible=false
-	var backdrop:=RushMenuBackdrop.new()
-	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	screen.add_child(backdrop)
+	game.player.visible=false;game.podium.visible=false
+	var backdrop:=RushMenuBackdrop.new();backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);screen.add_child(backdrop)
 	showroom_header("SKILLS")
-	var selected: Dictionary=RushRoster.MOVES[move_index]
+	var selected:Dictionary=RushRoster.MOVES[move_index]
 	var visual:=RushRoster.visual(selected.id)
-	var grid:=GridContainer.new()
-	grid.columns=3
-	grid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	grid.anchor_top=.16
-	grid.anchor_bottom=.47
-	grid.offset_left=24
-	grid.offset_right=-24
-	grid.offset_top=0
-	grid.offset_bottom=0
-	grid.add_theme_constant_override("h_separation",10)
-	grid.add_theme_constant_override("v_separation",10)
-	screen.add_child(grid)
+	var rank:=RushSkillGrowth.level(MobileCore.save,selected.id)
+	var power:=RushSkillGrowth.stats(rank)
+	var forecast:=RushGrowth.snapshot(MobileCore.save,game.selected_character(),selected.id)
+	var actual_cooldown:float=selected.cooldown*power.cooldown*forecast.cooldown*(1-float(game.selected_character().get("cooldown_bonus",0)))
+	var col:=column(.15,1);col.offset_bottom=-198
+	var grid:=GridContainer.new();grid.columns=3
+	grid.add_theme_constant_override("h_separation",10);grid.add_theme_constant_override("v_separation",10);col.add_child(grid)
 	for i in RushRoster.MOVES.size():
-		var move: Dictionary=RushRoster.MOVES[i]
-		var look:=RushRoster.visual(move.id)
-		var tile:=button("",func():move_index=i;moves(true))
-		tile.custom_minimum_size=Vector2(0,126)
-		tile.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		var move:Dictionary=RushRoster.MOVES[i];var look:=RushRoster.visual(move.id)
+		var tile:=button("",func():move_index=i;moves(true));tile.name="Move_"+move.id
+		tile.custom_minimum_size=Vector2(0,126);tile.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 		var bg:=style(Color("203541") if i==move_index else Color("101e2b"),12)
 		if i==move_index:bg.set_border_width_all(2);bg.border_color=look.color
 		tile.add_theme_stylebox_override("normal",bg)
-		var symbol:=icon(look.icon,look.color,44)
-		symbol.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-		symbol.offset_left=-22
-		symbol.offset_right=22
-		symbol.offset_top=15
-		symbol.offset_bottom=59
-		tile.add_child(symbol)
-		var text:=label(look.short,19,PAPER,true)
-		text.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		text.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		text.offset_top=-51
-		text.offset_bottom=-26
-		tile.add_child(text)
-		var state:=label("EQUIPPED" if game.selected_move()==move.id else ("OWNED" if RushRoster.owned(MobileCore.save,"move",move.id) else "%d COINS"%move.price),11,look.color)
-		state.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		state.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		state.offset_top=-25
-		state.offset_bottom=-8
-		tile.add_child(state)
-		grid.add_child(tile)
-	var detail:=column(.52,.72)
-	detail.add_child(label(visual.short,34,visual.color,true))
-	detail.add_child(body_text(visual.hint,19,PAPER))
-	detail.add_child(label(visual.tag+"   ·   %.1f s"%selected.cooldown,14,visual.color))
-	var bottom:=column(.77,.97)
-	bottom.add_child(button("TRY EFFECT",func():game.demo_move(selected.id),false,"play"))
+		var symbol:=icon(look.icon,RushSkillGrowth.tint(move.id,RushSkillGrowth.level(MobileCore.save,move.id)),44)
+		symbol.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP);symbol.offset_left=-22;symbol.offset_right=22;symbol.offset_top=15;symbol.offset_bottom=59;tile.add_child(symbol)
+		var title:=label(look.short,19,PAPER,true);title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+		title.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE);title.offset_top=-51;title.offset_bottom=-26;tile.add_child(title)
+		var state:=label("LV %d%s"%[RushSkillGrowth.level(MobileCore.save,move.id)," / EQUIPPED" if game.selected_move()==move.id else ""] if RushRoster.owned(MobileCore.save,"move",move.id) else "%d COINS"%move.price,11,look.color)
+		state.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;state.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE);state.offset_top=-25;state.offset_bottom=-8;tile.add_child(state);grid.add_child(tile)
+	spacer(col,8)
+	var title:=row();col.add_child(title)
+	var name:=label(visual.short,32,visual.color,true);name.size_flags_horizontal=Control.SIZE_EXPAND_FILL;title.add_child(name)
+	title.add_child(label("LV %d / 10"%rank,24,AMBER,true))
+	col.add_child(body_text(visual.hint,16,PAPER))
+	var stats_row:=row();col.add_child(stats_row)
+	for data in [["fist","+%d%%"%roundi((power.damage-1)*100)],["target","+%.1f%%"%((power.radius-1)*100)],["bolt","%.1fs"%actual_cooldown]]:
+		var cell:=row();cell.size_flags_horizontal=Control.SIZE_EXPAND_FILL;stats_row.add_child(cell);cell.add_child(icon(data[0],visual.color,25));cell.add_child(label(data[1],21,PAPER,true))
+	var progress:=bar(visual.color,7);progress.value=float(rank)/10*100;col.add_child(progress)
+	var milestones:=row();milestones.add_theme_constant_override("separation",8);col.add_child(milestones)
+	for step in [[1,"BASE","fist"],[5,"AWAKEN","nova"],[10,"ASCEND","crown"]]:
+		var tile:=PanelContainer.new();tile.size_flags_horizontal=Control.SIZE_EXPAND_FILL;tile.add_theme_stylebox_override("panel",style(Color("264347") if rank>=step[0] else Color("172435"),10));milestones.add_child(tile)
+		var inside:=VBoxContainer.new();tile.add_child(inside)
+		var symbol:=icon(step[2],visual.color if rank>=step[0] else MUTED,24);symbol.size_flags_horizontal=Control.SIZE_SHRINK_CENTER;inside.add_child(symbol)
+		var caption:=label("%s / %d"%[step[1],step[0]],15,PAPER,true);caption.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;inside.add_child(caption)
+	var book:=button("PASSIVE PLAYBOOK",skills,false,"book");book.custom_minimum_size.y=42;book.add_theme_font_size_override("font_size",18);col.add_child(book)
+	var bottom:=column(1,1);bottom.offset_top=-174;bottom.offset_bottom=-24
+	var actions:=row();bottom.add_child(actions)
+	var demo:=button("TRY EFFECT",func():game.demo_move(selected.id),false,"play");demo.name="TryEffect";demo.size_flags_horizontal=Control.SIZE_EXPAND_FILL;demo.add_theme_font_size_override("font_size",20);actions.add_child(demo)
 	var owned:=RushRoster.owned(MobileCore.save,"move",selected.id)
 	var equipped:bool=game.selected_move()==selected.id
-	var equip:=button("EQUIPPED" if equipped else ("EQUIP SKILL" if owned else "UNLOCK / %d COINS"%selected.price),func():
-		if not RushRoster.unlock(MobileCore.save,"move",selected.id):toast("Not enough coins, or storage is unavailable.");return
+	var equip:=button("EQUIPPED" if equipped else ("EQUIP" if owned else "%d COINS"%selected.price),func():
+		if not RushRoster.unlock(MobileCore.save,"move",selected.id):toast("Need more coins or free storage.");return
 		if not RushRoster.equip(MobileCore.save,"move",selected.id):toast("Selection could not be saved.");return
-		game.technique_id=selected.id
-		moves(true),not equipped,visual.icon)
-	equip.disabled=equipped or (not owned and MobileCore.save.data.coins<selected.price)
-	bottom.add_child(equip)
-	var book:=button("PASSIVE UPGRADES",skills,false,"book")
-	book.custom_minimum_size.y=46
-	book.add_theme_font_size_override("font_size",18)
-	bottom.add_child(book)
+		game.technique_id=selected.id;moves(true),false,visual.icon)
+	equip.size_flags_horizontal=Control.SIZE_EXPAND_FILL;equip.add_theme_font_size_override("font_size",20)
+	equip.disabled=equipped or (not owned and MobileCore.save.data.coins<selected.price);actions.add_child(equip)
+	var upgrade:=button("MAX LEVEL" if rank==10 else ("UPGRADE / %d COINS"%RushSkillGrowth.cost(rank) if owned else "UNLOCK TO UPGRADE"),func():
+		if RushSkillGrowth.buy(MobileCore.save,selected.id):moves(true);toast("%s / LEVEL %d"%[visual.short,rank+1])
+		else:toast("Need more coins or free storage."),true,"bolt")
+	upgrade.name="UpgradeSkill";upgrade.disabled=not owned or rank==10 or MobileCore.save.data.coins<RushSkillGrowth.cost(rank);bottom.add_child(upgrade)
 
 func _card_grid(parent:Control) -> GridContainer:
 	var grid:=GridContainer.new();grid.columns=2
@@ -871,17 +855,19 @@ func _card_grid(parent:Control) -> GridContainer:
 	parent.add_child(grid)
 	return grid
 
-func _visual_card(parent:Control,title:String,art:String,tint:Color,detail:String,cta:String,action:Callable,disabled:bool=false) -> Button:
+func _visual_card(parent:Control,title:String,art:String,tint:Color,detail:String,cta:String,action:Callable,disabled:bool=false,compact:bool=false) -> Button:
 	var panel:=PanelContainer.new();panel.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	var surface:=style(Color("162c45"),16)
 	surface.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel",surface);parent.add_child(panel)
 	var col:=VBoxContainer.new();col.add_theme_constant_override("separation",6);panel.add_child(col)
 	var image:=RushRewardArt.new();image.kind=art;image.tint=tint
-	image.custom_minimum_size=Vector2(0,72);col.add_child(image)
-	var heading:=label(title,24,PAPER,true);heading.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	image.custom_minimum_size=Vector2(0,52 if compact else 72);col.add_child(image)
+	var heading:=label(title,22 if compact else 24,PAPER,true);heading.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	heading.custom_minimum_size.y=28 if compact else 30
 	heading.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;col.add_child(heading)
 	var sub:=body_text(detail,14,Color("c4d9ed"));sub.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	sub.custom_minimum_size.y=20 if compact else 36;sub.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
 	col.add_child(sub)
 	var buy:=button(cta,action,true)
 	buy.custom_minimum_size.y=46;buy.add_theme_font_size_override("font_size",22)
@@ -895,28 +881,67 @@ func _visual_card(parent:Control,title:String,art:String,tint:Color,detail:Strin
 
 func training() -> void:
 	var fighter:Dictionary=game.selected_character()
-	var col:=page("GYM","%d COINS  ·  Tap + to upgrade your next fight"%MobileCore.save.data.coins,"training",home)
-	col.get_parent().anchor_bottom=1
-	col.get_parent().offset_bottom=-114
+	var rank:=RushTraining.league(MobileCore.save);var color:Color=RushTraining.COLORS[rank]
+	var col:=page("GYM","%d COINS / %s CLUB"%[MobileCore.save.data.coins,RushTraining.RANKS[rank]],"training",game.go_home)
+	col.get_parent().anchor_bottom=1;col.get_parent().offset_bottom=-120
+	var top:=row();col.add_child(top);top.add_child(icon("crown",color,42))
+	var summary:=VBoxContainer.new();summary.size_flags_horizontal=Control.SIZE_EXPAND_FILL;top.add_child(summary)
+	summary.add_child(label("%d / 240 TRAINING"%RushTraining.total(MobileCore.save),25,color,true))
+	var progress:=bar(color,7);progress.value=RushTraining.total(MobileCore.save)/240.0*100;summary.add_child(progress)
+	var filters:=row();col.add_child(filters)
+	for name in ["ALL","BODY","TECH","REWARDS"]:
+		var filter:=button(name,func():gym_filter=name;training(),gym_filter==name);filter.custom_minimum_size.y=42;filter.size_flags_horizontal=Control.SIZE_EXPAND_FILL;filter.add_theme_font_size_override("font_size",18);filters.add_child(filter)
 	var grid:=_card_grid(col)
 	for entry in RushBalance.TRAINING:
-		var level:=RushTraining.level(MobileCore.save,entry.id)
-		var cost:=RushBalance.training_cost(level)
+		var category:String="BODY" if entry.id in ["power","health","grit"] else ("TECH" if entry.id in ["charge","footwork","mastery"] else "REWARDS")
+		if gym_filter!="ALL" and gym_filter!=category:continue
+		var level:=RushTraining.level(MobileCore.save,entry.id);var tier:=RushTraining.tier(level)
 		var current:=RushTraining.display_value(fighter,entry.id,level)
-		var next:=RushTraining.display_value(fighter,entry.id,mini(5,level+1))
-		var title:String={"power":"POWER","health":"HEALTH","charge":"ENERGY","footwork":"SPEED","mastery":"COOLDOWN"}[entry.id]
-		var b:=_visual_card(grid,title,entry.icon,TEAL,current+(" > "+next if level<5 else " · MAX"),"MAX" if level>=5 else "+  %d COINS"%cost,func():
-			if RushTraining.buy(MobileCore.save,entry.id):training();toast(title+" UP!")
-			else:toast("Need more coins or free storage."),level>=5 or MobileCore.save.data.coins<cost)
-		var art:RushRewardArt=b.get_parent().get_child(0)
-		art.level=level;art.custom_minimum_size.y=62
-	_visual_card(grid,"MORE COINS","coin",AMBER,"Unlock your next upgrade","SHOP",shop)
-	var footer:=column(1,1)
-	footer.offset_top=-90;footer.offset_bottom=-24
-	var fight:=button("RESUME FIGHT" if game.has_resume() else "QUICK FIGHT",func():
+		var next:=RushTraining.display_value(fighter,entry.id,mini(30,level+1))
+		var title:String={"power":"POWER","health":"HEALTH","charge":"ENERGY","footwork":"SPEED","mastery":"COOLDOWN","grit":"RESILIENCE","recovery":"RECOVERY","fortune":"COIN BONUS"}[entry.id]
+		var cost:=RushBalance.training_cost(level)
+		var b:=_visual_card(grid,title,entry.icon,RushTraining.COLORS[tier],current+(" > "+next if level<30 else " / MAX"),"MAX" if level==30 else "+ %d COINS"%cost,func():
+			if RushTraining.buy(MobileCore.save,entry.id):training();toast(title+" / LEVEL %d"%(level+1))
+			else:toast("Need more coins or free storage."),level==30 or MobileCore.save.data.coins<cost,true)
+		b.name="Train_"+entry.id
+		var stack:VBoxContainer=b.get_parent()
+		var title_rank:=label("%s / %d"%[RushTraining.RANKS[tier],level],14,RushTraining.COLORS[tier]);title_rank.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;stack.add_child(title_rank);stack.move_child(title_rank,2)
+		var art:RushRewardArt=stack.get_child(0);art.level=posmod(maxi(1,level)-1,5)+1 if level>0 else 0
+	col.add_child(body_text("Recovery: after each wave. Resilience: less damage taken. Coin bonus: paid at fight end.",14))
+	var forecast:=RushGrowth.snapshot(MobileCore.save,fighter,game.selected_move(),game.challenge_contract)
+	col.add_child(body_text("RIVALS / +%d%% HP / +%d%% POWER"%[roundi((forecast.enemy_hp-1)*100),roundi((forecast.enemy_damage-1)*100)],15,color))
+	var contract:=button("CONTRACT ON / +25% COINS" if game.challenge_contract else "HARD CONTRACT / +25% COINS",func():game.challenge_contract=not game.challenge_contract;training(),game.challenge_contract,"flame")
+	contract.name="Contract";contract.add_theme_font_size_override("font_size",20);col.add_child(contract)
+	col.add_child(body_text("Optional: rivals gain +30% base HP and +20% base damage. Applies to your next fight.",14))
+	var footer:=column(1,1);footer.offset_top=-94;footer.offset_bottom=-24
+	var actions:=row();footer.add_child(actions)
+	var badges:=button("BADGES",achievements,false,"crown");badges.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(badges)
+	var fight:=button("RESUME" if game.has_resume() else "PLAY",func():
 		if game.has_resume():game.resume_saved_run()
-		else:game.run_mode="sprint";game.start_run(),true,"play")
-	fight.name="GymFight";footer.add_child(fight)
+		else:circuits(),true,"play")
+	fight.name="GymFight";fight.size_flags_horizontal=Control.SIZE_EXPAND_FILL;actions.add_child(fight)
+
+func achievements() -> void:
+	var earned:Dictionary=MobileCore.save.data.progress.get("badges",{})
+	var bonus:=RushAchievements.bonuses(MobileCore.save.data)
+	var col:=page("BADGES","%d / 36 / Permanent rewards"%earned.size(),"achievements",game.go_home)
+	col.add_child(body_text("+%d HP / +%.1f POWER / -%.1f%% COOLDOWN"%[bonus.health,bonus.power,bonus.cooldown*100],17,AMBER))
+	var filters:=GridContainer.new();filters.columns=3;filters.add_theme_constant_override("h_separation",8);filters.add_theme_constant_override("v_separation",8);col.add_child(filters)
+	for name in ["ALL","COMBAT","VICTORIES","GROWTH","STYLE"]:
+		var tab:=button(name,func():badge_filter=name;achievements(),badge_filter==name);tab.custom_minimum_size.y=40;tab.add_theme_font_size_override("font_size",18);tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL;filters.add_child(tab)
+	var grid:=_card_grid(col)
+	for badge in RushAchievements.catalog():
+		if badge_filter!="ALL" and badge.category!=badge_filter:continue
+		var done:bool=earned.get(badge.id,false);var value:=mini(badge.target,RushAchievements.metric(MobileCore.save.data,badge.metric))
+		var panel:=PanelContainer.new();panel.name="Badge_"+badge.id;panel.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		var skin:=style(Color("28463f") if done else Color("162c45"),14);skin.set_content_margin_all(12);panel.add_theme_stylebox_override("panel",skin);grid.add_child(panel)
+		var content:=VBoxContainer.new();content.add_theme_constant_override("separation",8);panel.add_child(content)
+		var art:=RushRewardArt.new();art.kind=badge.icon;art.tint=AMBER if done else MUTED;art.custom_minimum_size.y=54;content.add_child(art)
+		var title:=body_text(badge.title,22,PAPER);title.add_theme_font_override("font",DISPLAY);title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;title.custom_minimum_size.y=52;title.vertical_alignment=VERTICAL_ALIGNMENT_CENTER;content.add_child(title)
+		var detail:=body_text(RushAchievements.requirement(badge),13);detail.custom_minimum_size.y=36;detail.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;content.add_child(detail)
+		var progress:=bar(AMBER if done else TEAL,6);progress.value=float(value)/badge.target*100;content.add_child(progress)
+		var count:=label("UNLOCKED" if done else "%d / %d"%[value,badge.target],14,AMBER if done else TEAL);count.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;content.add_child(count)
+		var reward:=label(RushAchievements.reward(badge),14,PAPER);reward.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;content.add_child(reward)
 
 func skills() -> void:
 	var in_run: bool = game.mode == "paused"
@@ -939,9 +964,9 @@ func shop() -> void:
 	var col:=page("SHOP","%d COINS  ·  Free test purchases"%MobileCore.save.data.coins if test else "%d COINS"%MobileCore.save.data.coins,"shop",game.go_home)
 	var grid:=_card_grid(col)
 	var ads:bool=game.ads_removed()
-	_visual_card(grid,"NO ADS","shield",TEAL,"Permanent · Reward videos stay","OWNED" if ads else ("TEST UNLOCK" if test else "UNAVAILABLE"),func():MobileCore.commerce.buy("remove_ads"),ads or not test)
+	_visual_card(grid,"NO ADS","shield",TEAL,"Reward videos stay","OWNED" if ads else ("TEST UNLOCK" if test else "UNAVAILABLE"),func():MobileCore.commerce.buy("remove_ads"),ads or not test)
 	var gold:bool=MobileCore.save.data.entitlements.get("gold_gloves",false)
-	_visual_card(grid,"GOLD GLOVES","fist",AMBER,"Cosmetic · Every fighter","OWNED" if gold else ("TEST UNLOCK" if test else "UNAVAILABLE"),func():MobileCore.commerce.buy("gold_gloves"),gold or not test)
+	_visual_card(grid,"GOLD GLOVES","fist",AMBER,"Every fighter","OWNED" if gold else ("TEST UNLOCK" if test else "UNAVAILABLE"),func():MobileCore.commerce.buy("gold_gloves"),gold or not test)
 	for id in ["coins_500","coins_1500","coins_4000"]:
 		var pack:Dictionary=RushBalance.PRODUCTS[id]
 		_visual_card(grid,"%d COINS"%pack.coins,id,AMBER,"Fighters · Skills · Stats","TEST FREE" if test else "UNAVAILABLE",func():MobileCore.commerce.buy(id),not test)
@@ -998,7 +1023,10 @@ func _busy(value: bool) -> void:
 		if is_instance_valid(b): b.disabled = value or b.get_meta("permanent_disabled",false)
 	if value: toast("Test provider running…" if MobileCore.commerce.provider.is_mock else "Connecting…")
 
-func toast(text: String) -> void:
+func toast(text:String) -> void:
+	MobileCore.notices.post(text)
+
+func _present_notice(text: String) -> void:
 	message.text = text
 	var success:bool="CLEAR" in text or "RECOVERY" in text
 	var surface:=style(Color("147b72") if success else Color("214c8d"),12)

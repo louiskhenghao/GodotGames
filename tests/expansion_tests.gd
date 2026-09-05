@@ -12,7 +12,7 @@ func run():
 	check(not RushRoster.unlock(core.save,"character","titan"),"insufficient coins cannot unlock fighter")
 	check(not RushRoster.unlock(core.save,"character","forged"),"unknown catalog ID is rejected")
 	check(not RushRoster.equip(core.save,"move","meteor"),"locked technique cannot be equipped")
-	core.save.grant("test-coins",5000)
+	core.save.grant("test-coins",20000)
 	for c in RushRoster.CHARACTERS:
 		check(RushRoster.unlock(core.save,"character",c.id),"unlock "+c.id)
 		var coins: int=core.save.data.coins
@@ -30,7 +30,7 @@ func run():
 		game.go_home()
 		game.run_mode="sprint"
 		game.start_run()
-		check(game.max_hp==c.hp and game.damage==c.damage and game.technique_id==c.move,"distinct starting kit "+c.id)
+		check(is_equal_approx(game.max_hp,c.hp+RushAchievements.bonuses(core.save.data).health) and is_equal_approx(game.damage,c.damage+RushAchievements.bonuses(core.save.data).power) and game.technique_id==c.move,"distinct starting kit "+c.id)
 		game.finish_run(false)
 	for m in RushRoster.MOVES:
 		game.go_home()
@@ -46,8 +46,9 @@ func run():
 		for i in 12: game._update_technique(.1)
 		check(target.health<hp,"technique damages target: "+m.id)
 		game.finish_run(false)
-	for id in ["sprint","survival30","onslaught50","ladder","hell","blitz","bossrush"]:
+	for id in ["sprint","survival30","onslaught50","ladder","hell","blitz","bossrush","rift"]:
 		game.go_home()
+		if id=="rift":RushChallenges.unlock_rift(core.save)
 		game.run_mode=id
 		game.start_run()
 		game.hp=1000000
@@ -69,6 +70,7 @@ func run():
 		check(balance==core.save.data.coins,"result cannot pay twice: "+id)
 		if id=="ladder":check(visited.size()==5,"ladder traverses all five venues")
 	game.go_home()
+	game.stage=0
 	game.run_mode="survival30"
 	game.start_run()
 	game.director.number=17

@@ -2,6 +2,8 @@ extends Node
 ## Reusable service root; game-specific catalogs are supplied by each game.
 var save := CoreSaveStore.new()
 var commerce := CoreCommerce.new()
+var notices:=CoreNoticeBus.new()
+var notifications:=CoreNotifications.new()
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -10,9 +12,10 @@ func _ready() -> void:
 	elif OS.is_debug_build():
 		save = CoreSaveStore.new("user://profile.debug.json")
 	save.load_profile()
-	if OS.has_feature("playtest") and not save.data.transactions.has("playtest-welcome-v1"):
-		save.grant("playtest-welcome-v1",1200)
 	add_child(commerce)
+	add_child(notices)
+	add_child(notifications)
+	notifications.configure()
 
 func configure_commerce(catalog: Dictionary, rewards: Dictionary, adapter: CoreCommerceProvider = null) -> void:
 	if adapter == null:

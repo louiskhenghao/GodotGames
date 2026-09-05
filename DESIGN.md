@@ -47,3 +47,16 @@ Keep the boxing club identity, with a brighter royal-blue upgrade surface (`#163
 Use six graphical two-column cards in Shop and GYM, with short labels and a direct action. Keep the GYM fight action fixed below the scroll region. Fight selection uses eight icon-labelled mode buttons and a separate footer. Icons size and position from their actual button bounds. Preserve a continuous gym floor behind showroom controls by moving the orthographic camera back along its viewing axis; remove the floor grid at the podium.
 
 Rattle, Shade and Hex add CC0 creature silhouettes with native animations. Hell, Blitz and Boss Rush introduce denser spawning, shorter rests and varied boss patterns. The faster 144 / 156 BPM original battle scores support these modes. Browser text must not depend on a desktop system font for arrows; use portable characters or the vector icon system.
+
+
+### 0.3.0 — human roster and one fight flow
+
+Play opens venue/mode selection, then Fight starts immediately. Resume continues to bypass setup. Home has one compact identity row above four horizontal, color-coded destinations (Fighter / Skills / GYM / Shop). Shared button geometry uses symmetric text insets. Product descriptions reserve equal row height; compact training cards still expose their actions above a fixed Play footer.
+
+Only humans are playable. Three skeleton silhouettes belong to the separately unlocked Rift encounter and its dedicated necropolis. Each human's showroom changes architecture and props, not merely the palette. Skill previews use a front-facing player at combat scale in a closer ring camera, with targets in front and normal-map collision.
+
+Nine modes use different musical compositions. Game-specific music choices and economy/migration rules remain in `game/`; reusable cue playback, coin unlocks, notices and notification-adapter contracts belong to `addons/mobile_core/`.
+
+## Growth surfaces / 0.4.0
+
+Preserve the current navy, teal and amber game UI. GYM uses tier colors and two-column upgrade cards with category filters; its PLAY and BADGES actions remain fixed. Skills show actual growth through compact numeric stats and Base / Awaken / Ascend markers. Achievement cards favor icons, visible progress and one short objective. Three different mech chassis use original mechanical heads and articulated fists. No modal interrupts combat for an achievement; newly earned badges appear at settlement.

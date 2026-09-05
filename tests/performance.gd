@@ -14,6 +14,13 @@ func run():
 		save.grant("benchmark-fighter",5000)
 		RushRoster.unlock(save,"character",args[3])
 		RushRoster.equip(save,"character",args[3])
+	if game.stage==5:
+		root.get_node("MobileCore").save.grant("rift-benchmark",600)
+		RushChallenges.unlock_rift(root.get_node("MobileCore").save)
+		game.run_mode="rift"
+	if "ascended" in args:
+		var save=root.get_node("MobileCore").save
+		save.data.progress.skill_levels={"meteor":10}
 	game.start_run()
 	game.set_process(false)
 	game.set_physics_process(false)
@@ -33,6 +40,8 @@ func run():
 	var last := Time.get_ticks_usec()
 	for i in 180:
 		if stress:
+			if "ascended" in args and i%45==0:game._cast_move("meteor",1)
+			game.player.animate(1.0/60.0,true)
 			game._simulate(1.0/60.0)
 			game.hud.update_stats()
 			game.follow_camera.update(game.camera,game.player.position,root.get_visible_rect().size,1.0/60.0)

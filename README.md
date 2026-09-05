@@ -1,6 +1,6 @@
 # Ring Rush
 
-Portrait 3D boxing survival in **Godot 4.5.1**, with Web and universal macOS playtests plus an Android/iOS export pipeline and reusable `addons/mobile_core/` services. This build includes a 3D fighter carousel with drag-to-rotate inspection, nine fighting identities using two human bases, distinct equipment and three CC0 creature models, icon-led move selection with playable effect previews, five shaped venues with obstacles, and eight challenge modes including 10/30/50-wave survival, Hell and Boss Rush.
+Portrait 3D boxing survival in **Godot 4.5.1**, with Web and universal macOS playtests plus an Android/iOS export pipeline and reusable `addons/mobile_core/` services. This build includes a 3D fighter carousel with drag-to-rotate inspection, six human fighters and three distinct humanoid mechs, with personal environments, icon-led move selection with playable effect previews, five shaped venues with obstacles, and nine modes including 10/30/50-wave survival, Hell, Boss Rush and a separately unlocked creature encounter.
 
 **Status:** standalone Web and universal Mac playtests exported and smoke-tested. Native ads/IAP adapters, receipt validation, signed mobile binaries and physical Android/iOS testing remain pending. The development cosmetic store explicitly simulates transactions; fighter and technique purchases use earned game coins.
 
@@ -25,11 +25,11 @@ Dodge red attack warnings. Collect teal XP, choose one of three upgrades and com
 - Upgrades open in a centered popup over the unchanged arena and HUD. Combat and held input pause. The panel enters in 0.22 seconds and exits in 0.12 seconds; rapid repeated clicks cannot award twice. Reduced Motion skips the spatial entrance.
 - Combat uses a closer camera with a small dead zone and smooth following. Walking toward an arena edge reveals more of the surroundings. Viewport changes and saved-run restoration reframe the player.
 - Hits use recoil, short warm flashes and feedback audio. Defeated opponents fall, hold briefly and fade through materials supported by Compatibility rendering. At most ten fallen actors remain visible, using the existing 48-actor pool; extreme pool pressure can reclaim the oldest body.
-- The showroom has a boxing-gym backdrop. Other menus have an opaque stadium background; option changes no longer fade the entire page and reveal the hidden character. Top/bottom contrast veils protect controls over bright scenery.
+- The six human fighters each have a personal setting: boxing club, rooftop, powerhouse, electronic lab, night alley and sunrise dojo. Other menus have an opaque stadium background; option changes no longer fade the entire page and reveal the hidden character. Top/bottom contrast veils protect controls over bright scenery.
 
 ## Menus and ads
 
-Home focuses on the selected fighter and one Play/Resume action. Drag the fighter to turn it; use the arrows or keyboard left/right to switch identities to see each model, attributes, signature and coin cost together; browsing never equips or spends coins. Six skills have different icons and colors, a short tactical hint and a **Try Effect** button. The shop has six graphical cards in two columns. The GYM has five permanent stat upgrades with a visible purchase action and a fixed Quick Fight / Resume button.
+Home groups the selected fighter with its signature, four colored shortcuts in one row, and one Play/Resume action. Play opens the combined venue/mode picker; its Fight button starts immediately, without returning home. Drag the fighter to turn it; use the arrows or keyboard left/right to switch identities to see each model, attributes, signature and coin cost together; browsing never equips or spends coins. Six skills have different icons and colors, a short tactical hint and a **Try Effect** button. The shop has six graphical cards in two columns. The GYM has eight training disciplines with tier colors, category filters and fixed Play / Badges actions.
 
 Development monetization is fully interactive but simulated:
 
@@ -45,7 +45,8 @@ Development monetization is fully interactive but simulated:
 
 - **Quick Fight:** 10 clear-based waves, designed for a short session.
 - **Blitz:** eight waves, 0.22-second spawn intervals and one-second breaks.
-- **Hell:** twenty dense waves, 0.18-second spawns, 0.75-second breaks, creatures from wave one and no ordinary-wave healing.
+- **Hell:** twenty dense human-enemy waves, 0.18-second spawns, 0.75-second breaks and no ordinary-wave healing.
+- **The Rift:** twelve waves in an exclusive octagonal necropolis. Unlock once for 600 coins through Sealed Encounter in the fight picker. Rattle, Shade and Hex are enemy models exclusive to this mode; its champion also uses a creature silhouette.
 - **Boss Rush:** five bosses with alternating rush, slam and ranged-circle patterns.
 - **Survival 30 / Onslaught 50:** complete 30 or 50 waves with an increasingly strong build.
 - **World Ladder:** 25 waves across all five venues, changing venue after each five-wave boss.
@@ -63,11 +64,11 @@ Venues: **The Underground** boxing ring, **Neon Siege** street ambush, **Skyline
 | Volt | 95 / 17 | Thunder Step — up to eight chained targets | Live wire | 420 |
 | Raven | 90 / 23 | Rising Dragon — uppercut and launch | Fighting spirit | 550 |
 | Sol | 105 / 19 | Solar Wave — piercing fire projectile | Hot knuckles | 700 |
-| Rattle | 100 / 22 | Hundred Hands | Quick combo | 320 |
-| Shade | 90 / 24 | Rising Dragon | Sweet spot | 480 |
-| Hex | 120 / 17 | Thunder Step | Live wire | 620 |
+| Aegis | 190 / 33 | Quake — 8% wider skills | Iron guard ×2 | 1,800 |
+| Ion | 125 / 27 | Thunder — 8% faster recharge | Live wire ×2 | 2,600 |
+| Onyx | 165 / 38 | Fire Wave — 12% stronger skills | Hot knuckles ×2 | 3,600 |
 
-Movement speed and punch timing also differ. Unlocking a fighter includes its technique. Techniques can be purchased separately and equipped on any owned fighter. Atlas and Fault Line are available from the start. The gym offers power, health, initial energy, speed and technique cooldown upgrades, with five levels each. Coins, ownership and selection commit atomically; failed writes do not debit the balance.
+Movement speed and punch timing also differ. Unlocking a fighter includes its technique. Techniques can be purchased separately and equipped on any owned fighter. Atlas and Fault Line are available from the start. The gym offers power, health, initial energy, speed, technique cooldown, resilience, recovery and coin bonuses, with 30 levels each. Skills separately support ten levels; 36 badges grant small permanent bonuses. Coins, ownership and selection commit atomically; failed writes do not debit the balance.
 
 ## Save and resume
 
@@ -113,7 +114,7 @@ Design decisions and next production priorities: [game plan](docs/game-plan.md).
 The latest refinement adds content-sized upgrade cards, side navigation, five coin-funded permanent stats, three simulated coin packs, larger arenas and charger / spark / guard enemies with distinct tactics. Essential skill effects remain visible with extra particles disabled. See [refinement screenshots](docs/refinement-preview/overview.jpg) and the [two supplied FBX model assessment](docs/model-review/README.md). The supplied models are optimized previews; animation retargeting needs correction before they become playable fighters.
 
 
-## Friend playtest 0.2.0
+## Friend playtest 0.4.0
 
 See [playtest instructions](docs/playtest.md). Exports are ignored build artifacts:
 
@@ -130,4 +131,23 @@ python3 tools/export_playtest.py --godot /path/to/Godot
 
 Alternatively pass `--templates /folder/with/templates` containing `web_nothreads_release.zip` and `macos.zip`. The script temporarily supplies those paths and restores the preset file afterwards. The Web shell keeps a portrait canvas centered on wide screens; desktop/mobile texture compression variants are enabled. `builds/.gdignore` prevents exported assets from being imported back into the project.
 
-Run `godot --headless --path . --script res://tests/playtest_tests.gd` for the new mode, model, save and UI checks. [Current screenshots](docs/playtest-preview/overview.jpg) and [validation](docs/validation.md) describe the tested boundaries.
+Run `godot --headless --path . --script res://tests/playtest_tests.gd` for the new mode, model, save and UI checks. [Current screenshots](docs/flow-preview/overview.jpg) and [validation](docs/validation.md) describe the tested boundaries.
+
+
+## Reuse the engine core
+
+`addons/mobile_core/` contains persistence, coin unlocks, ad/IAP providers, durable rewards, in-game notices, an opt-in OS-notification adapter contract, music cues, audio pooling, VFX, touch input and centered button layout. It imports no Ring Rush game code. Game catalogs, welcome grants, character migration, secret-mode rules and soundtrack choices stay under `game/`.
+
+```sh
+python3 tools/create_game.py /absolute/path/to/NextGame --name 'Next Game'
+```
+
+This produces an independent starter with test commerce and in-game notices. The starter was imported and run separately with no Ring Rush assets. See [core API and integration guide](addons/mobile_core/README.md). OS notifications still require a real platform provider; no permission prompt or reminder is created automatically.
+
+Old playtest purchases of Rattle, Shade or Hex are refunded once. Their signature moves remain unlocked. Existing creature-player snapshots switch to Atlas while retaining the run's statistics; creature enemies in ordinary saved runs are converted to corresponding human roles. The migration commits atomically and is tested for idempotency.
+
+Every mode now has its own composition, with distinct harmony, melody, drum pattern and synthesis rather than a shared track sped up or slowed down. The styles include funk breaks, drum and bass, trip hop, industrial march, heavy riffs, cinematic brass, pentatonic plucks, arcade pulse and a dark waltz. `tools/generate_mode_music.py` and [score catalog](docs/mode-music.json) reproduce all nine scores.
+
+## Growth update 0.4.0
+
+Three new robot chassis, eight 30-level training tracks, six club ranks, 36 permanent badges, ten levels per technique and optional hard contracts. Rival growth is capped and frozen into run snapshots. See [growth design](docs/growth-design.md) for exact benefits, pricing and achievement rules. The project still uses explicit mock commerce for playtests.

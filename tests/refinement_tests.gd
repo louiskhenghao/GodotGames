@@ -23,16 +23,18 @@ func run():
   check(store.data.coins==before-80 and RushTraining.level(store,stat.id)==1,"training cost and rank commit together: "+stat.id)
   for i in 4:RushTraining.buy(store,stat.id)
   before=store.data.coins
+  store.data.progress[stat.id]=30
   check(not RushTraining.buy(store,stat.id) and store.data.coins==before,"maximum stat cannot spend coins: "+stat.id)
+  store.data.progress[stat.id]=5
  check(not RushTraining.buy(store,"unknown"),"unknown stat cannot be purchased")
  var broken:=CoreSaveStore.new("user://missing-directory-refinement/profile.json");broken.data.coins=100
  check(not RushTraining.buy(broken,"power") and broken.data.coins==100 and RushTraining.level(broken,"power")==0,"failed save never grants or charges training")
  var fresh:=CoreSaveStore.new("user://refinement-test.json");fresh.load_profile()
  check(RushTraining.level(fresh,"footwork")==5,"permanent boosts survive reload")
  game.start_run()
- check(is_equal_approx(game.damage,35) and is_equal_approx(game.max_hp,160) and is_equal_approx(game.move_speed,5.16),"training changes actual combat stats")
+ check(is_equal_approx(game.damage,35+RushAchievements.bonuses(store.data).power) and is_equal_approx(game.max_hp,160+RushAchievements.bonuses(store.data).health) and is_equal_approx(game.move_speed,5.16),"training changes actual combat stats")
  game.technique_id="barrage";game.technique()
- check(is_equal_approx(game.technique_clock,4.8),"mastery reduces actual technique cooldown")
+ check(is_equal_approx(game.technique_clock,4.8*(1-RushAchievements.bonuses(store.data).cooldown)),"mastery reduces actual technique cooldown")
  for move in RushRoster.MOVES:
   game._clear_combat()
   game.player.position=Vector3.ZERO
@@ -61,7 +63,7 @@ func run():
  check(charger.rush_time>0,"charger telegraph releases a timed rush")
  game.invulnerable=0;hp=game.hp
  for i in 10:game._update_enemy(charger,.05)
- check(is_equal_approx(game.hp,hp-14*(1-game.rank_of("armor")*.1)),"charger swept collision hits once per rush")
+ check(is_equal_approx(game.hp,hp-14*(1-game.rank_of("armor")*.1)*game.growth.enemy_damage*(1-game.growth.grit)),"charger swept collision hits once per rush")
  var guard=game._spawn(Vector3(2,0,0),"guard")
  guard.health=100;game._hit(guard,20,true)
  check(is_equal_approx(guard.health,88),"guard armor mitigates normal punches")
@@ -88,8 +90,8 @@ func run():
   check(game.hud.message.vertical_alignment==VERTICAL_ALIGNMENT_CENTER,"toast text is vertically centered")
  game.mode="playing";game.finish_run(false);game.go_home()
  await settle()
- var nav:Control=game.hud.screen.get_node("SideNavigation")
- check(nav.get_child_count()==3,"home has three floating icon destinations")
+ var nav:Control=game.hud.screen.find_child("SideNavigation",true,false)
+ check(nav.get_child_count()==4,"home groups all four icon destinations")
  var before:int=store.data.coins
  core.commerce._on_purchase("late-callback","coins_500","refinement-pack-1",true,"")
  core.commerce._on_purchase("late-callback","coins_500","refinement-pack-1",true,"")

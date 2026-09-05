@@ -96,3 +96,15 @@ Fading uses each actor's existing surface materials because Godot's instance tra
 Essential skill feedback (pooled strokes, lightning, rings, cracks) remains visible when the saved `effects` preference disables decorative sparks, numbers, impact flashes and shake. All effect geometry is bounded: 192 particles, 12 rings, 48 strokes, 48 crack segments and 16 numbers. VFX bounds accommodate the larger arenas. `RushArenaLayout.SCALE = 1.30` expands both axes, giving 69% more playable area; render geometry, collision boundaries, spawns, blockers and foundry hazards use matching coordinates. Combat retains its close follow camera.
 
 Crowds now use three shared pose libraries: the original boxer, a female agile silhouette with hair/mask/scarf, and an armored heavyweight. Each still renders through two surfaces, without per-enemy skeletons. The same 48 actor pool handles seven roles: rookie, runner, brute, boss, charger, spark and guard. Chargers commit to a warned line and use swept collision with one hit per rush; sparks lock a delayed strike position that can be dodged; guards mitigate ordinary punches while techniques bypass armor. New types enter finite waves from wave four. Restoring a snapshot resets pending enemy attacks and gives at least 0.8 seconds of grace, since transient telegraphs are not serialized.
+
+## Reusable core extraction, 0.3.0
+
+The engine root no longer grants Ring Rush's welcome coins. `RushBootstrap` owns that policy and the one-time migration of old creature purchases/snapshots. `CoreWallet` now implements atomic idempotent coin unlocks; the roster and hidden-mode gate supply validated game catalog keys. UI icon placement uses `CoreButtonLayout`, including symmetric text insets so a left-side icon never moves Play's text off center.
+
+`CoreMusicPlayer` takes an injected cue catalog; `RushMusic` maps each mode to a different original score. `CoreNoticeBus` delivers in-game text to the host HUD. `CoreNotifications` defines a separate opt-in OS provider contract with honest unavailable/unauthorized results. Native notification SDKs and push delivery are not included.
+
+`tools/create_game.py` produces an independent starter by copying only `addons/mobile_core/` and a minimal Godot scene. It was imported and launched outside this repository with no `game/` or Ring Rush assets. See `addons/mobile_core/README.md` for API examples and ownership boundaries.
+
+## Host progression / 0.4.0
+
+`RushTraining`, `RushSkillGrowth`, `RushAchievements` and `RushGrowth` own the boxing-specific economy and balance. Wallet updates, upgrades and achievement grants share one `CoreSaveStore.commit`. Fight action counters are accumulated in memory, checkpointed with the run, and merged once by `RushProgress.settle`. Frozen growth factors live in optional snapshot fields, with a legacy baseline for earlier snapshots. Generic mobile core services do not import these rules.

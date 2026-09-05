@@ -31,3 +31,16 @@ License: CC0; the original notice is preserved in `kaykit/LICENSE.txt`.
 `tools/prepare_creatures.gd` reduces the source animation libraries; `tools/bake_creatures.gd` bakes shared crowd poses at 24 Hz. Enemy bone, revenant and hexer roles use these three silhouettes. The prepared scenes reference local PNG textures only; source GLBs are excluded from playtest exports. These are modified open assets, not newly sculpted project originals.
 
 The four original music loops can be regenerated with `tools/generate_battle_music.py`: menu 104 BPM, street 138 BPM, general combat 144 BPM, Hell/Boss Rush 156 BPM. Sixteen-bar arrangements include syncopated bass, drums, chord stabs, riffs and fills. Godot engine and dependency license notices are in `assets/licenses/`.
+
+
+### Role change in 0.3.0
+
+Rattle, Shade and Hex are now **enemy-only** in the optional Rift mode, with a creature champion. The playable roster contains six humans. Prepared live skeleton scenes are retained only for asset preparation; runtime crowds load shared baked poses on demand when entering the secret encounter. Old creature purchases are refunded by game migration, not by the engine core.
+
+The mode music supersedes the earlier shared tempo variants. `tools/generate_mode_music.py` creates nine original compositions with separate motifs, harmony, rhythmic patterns and instruments. `docs/mode-music.json` records their titles and parameters. No commercial recordings or sampled songs are used.
+
+## 0.4.0 playable mechs
+
+AEGIS, ION and ONYX use three different chassis from **Ultimate Space Kit**, by **Quaternius**, CC0 1.0. Author/license: https://quaternius.com/packs/ultimatespacekit.html . Download mirror: https://opengameart.org/node/155017 (`ultimate_space_kit-glb.zip`). Original files: `Mech-D5wW2jDO42.glb`, `Mech-o3Ps8z8ByP.glb`, `Mech-4UvIHxnoSR.glb`.
+
+The game adaptation removes the original animal pilot head triangles, adds original mechanical helmets and articulated boxing arms, normalizes scale, and maps seven native animations to the combat interface. These are three different chassis meshes (4,008 / 5,846 / 6,756 source triangles), not recolors of the existing boxer. `tools/prepare_mechs.gd` reproduces the scene adaptation; runtime gloves and helmets are authored in `game/boxer.gd`. Unused source-pack assets are under the ignored source directory and excluded from builds.
