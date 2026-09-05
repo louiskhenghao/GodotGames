@@ -1,0 +1,29 @@
+; Open with Godot 4.5.1 or compatible Godot 4.x.
+config_version=5
+
+[application]
+config/name="Ring Rush"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+config/icon="res://assets/icon.svg"
+
+[autoload]
+MobileCore="*res://addons/mobile_core/mobile_core.gd"
+
+[display]
+window/size/viewport_width=540
+window/size/viewport_height=960
+window/size/window_width_override=432
+window/size/window_height_override=768
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.035, 0.047, 0.075, 1)
+
+[mobile_core]
+monetization/allow_debug_mock=true
