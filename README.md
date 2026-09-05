@@ -1,6 +1,6 @@
 # Ring Rush
 
-Portrait 3D boxing survival in **Godot 4.5.1**, with an Android/iOS export pipeline and reusable `addons/mobile_core/` services. This build replaces the primitive boxer with a textured, rigged Quaternius humanoid, adds five venues, six coin-unlockable fighting styles, six equipable signature techniques and finite wave challenges.
+Portrait 3D boxing survival in **Godot 4.5.1**, with an Android/iOS export pipeline and reusable `addons/mobile_core/` services. This build includes a swipeable 3D fighter carousel, six coin-unlockable fighting identities using two human base meshes and distinct equipment, icon-led move selection with playable effect previews, five shaped venues with obstacles, and finite 10/30/50-wave challenges.
 
 **Status:** playable and validated on macOS. Native ads/IAP adapters, receipt validation, signed mobile binaries and physical Android/iOS testing remain pending. The development cosmetic store explicitly simulates transactions; fighter and technique purchases use earned game coins.
 
@@ -10,14 +10,28 @@ Open `project.godot` in Godot 4.5.1 and press **F5**, or double-click `run.comma
 
 | Action | Touch | Keyboard |
 | --- | --- | --- |
-| Move | Drag away from action buttons | WASD / arrows |
+| Move | Drag in the lower left half | WASD / arrows |
 | Punch | Automatic toward nearby enemies | Automatic |
-| Dodge | Dodge | Space |
-| Equipped technique | Technique, on cooldown | Q |
-| Amplified technique | Unleash at 100% meter | E |
+| Dodge | Small right-side round arrow | Space |
+| Equipped technique | Colored round skill icon on the right | Q |
+| Amplified technique | Upper-right crown at 100% | E |
 | Pause | Pause | Esc |
 
 Dodge red attack warnings. Collect teal XP, choose one of three upgrades and combine up to 18 passive skills. Two rerolls are available per run. Techniques recharge independently of the ultimate meter; knockouts and wave clears charge the ultimate. Five-wave boss checkpoints punctuate longer runs. Clear a wave to collect remaining XP, recover some health and receive a short break.
+
+## Menus and ads
+
+Home focuses on the selected fighter and one Play/Resume action. Swipe the fighter showroom or use its arrows to see each model, attributes, signature and coin cost together; browsing never equips or spends coins. Six skills have different icons and colors, a short tactical hint and a **Try Effect** button. The shop groups remove ads, training and cosmetics.
+
+Development monetization is fully interactive but simulated:
+
+- Home banner only; combat stays clear.
+- One optional rewarded revive per fight: 60% HP and 3 seconds of protection.
+- Optional victory video: +50% of the already-saved result coins, once.
+- Automatic interstitial after every third settled run, skipped after an earned video on that run.
+- Permanent **Remove Ads** suppresses banners and automatic interstitials; voluntary rewards remain available.
+- Test rewarded ads last 15 seconds. Close unlocks after 5 seconds; early close grants nothing. Test interstitials close after 5 seconds. Production duration and close controls must be owned by the native SDK.
+- Earned reward receipts and their game benefits persist with duplicate protection; no-fill, timeout and failed saves have retry paths.
 
 ## Challenges and venues
 
@@ -26,7 +40,7 @@ Dodge red attack warnings. Collect teal XP, choose one of three upgrades and com
 - **World Ladder:** 25 waves across all five venues, changing venue after each five-wave boss.
 - **90-second Rush:** the original timed format, champion at 75 seconds and a bounded 30-second overtime.
 
-Venues: **The Underground** boxing ring, **Neon Siege** street ambush, **Skyline Rooftop** helipad, **Iron Foundry** with timed steam vents, and **Dawn Temple** courtyard. Winning a venue unlocks the next for standalone fights. Ladder visits them automatically. Bosses currently share the telegraphed area-slam behavior with different scaled stats.
+Venues: **The Underground** boxing ring, **Neon Siege** street ambush, **Skyline Rooftop** helipad, **Iron Foundry** with timed steam vents, and **Dawn Temple** courtyard. The street is a long rectangle, rooftop an octagon, foundry a wide rectangle and temple a six-sided courtyard. Solid props block movement and dashes; enemies steer around them. Trees and instanced spectators populate the perimeter. Winning a venue unlocks the next for standalone fights. Ladder visits them automatically. Bosses currently share the telegraphed area-slam behavior with different scaled stats.
 
 ## Fighters and moves
 
@@ -48,11 +62,11 @@ Active fights checkpoint every 15 seconds, on wave clears and when the app loses
 ## Performance and reusable core
 
 - Pool of 48 opponents / 64 pickups; combat does not create/free actors.
-- Hero uses the imported humanoid skeleton. Crowds share reduced meshes with 24 Hz baked real animation poses, in two surfaces per frame. The complete crowd animation asset is about 6.6 MB compressed.
+- Hero uses male/female imported humanoid skeletons with bone-bound equipment. Crowds share reduced meshes with 24 Hz baked real animation poses, in two surfaces per frame. The complete crowd animation asset is about 6.6 MB compressed.
 - Environments are batched; spectators, particles and ground cracks use instancing.
 - Fixed limits: 192 particles, 12 shockwave rings, 48 crack segments, 16 damage numbers and six SFX voices. Music has its own player and mute setting.
 - Spatial crowd separation, fixed physics simulation, safe-area UI and independent second-finger action controls.
-- Battery saver removes real-time shadows, audience and MSAA.
+- Battery saver removes real-time shadows, the stadium audience and MSAA; perimeter crowds remain batched.
 
 `addons/mobile_core/` contains reusable persistence, provider-based monetization, VFX, audio and touch input without importing game rules. See [architecture](docs/architecture.md), [validation](docs/validation.md) and [mobile release work](docs/mobile-release.md).
 
@@ -62,16 +76,19 @@ Active fights checkpoint every 15 seconds, on wave clears and when the app loses
 godot --headless --path . --editor --import --quit
 godot --headless --path . --script res://tests/run_tests.gd
 godot --headless --path . --script res://tests/expansion_tests.gd
+godot --headless --path . --script res://tests/ux_ads_tests.gd
 godot --headless --path . --script res://tests/balance_sim.gd
-godot --path . --script res://tests/capture.gd
+godot --path . --script res://tests/ux_capture.gd
 godot --path . --disable-vsync --script res://tests/performance.gd -- /tmp/rush-stress.json stress
 ```
 
 All test/capture profiles are disposable. Full-wave transition tests boost HP/damage; the separate balance bot uses starting stats. Actual human enjoyment, long-term economy, thermal behavior and mobile touch latency need human/device playtesting.
 
-- `python3 tools/prepare_fighter.py`: assemble the humanoid and selected CC0 animation tracks.
+- `python3 tools/prepare_fighter.py` and `python3 tools/prepare_female.py`: assemble the two humanoids and selected CC0 animation tracks.
 - `godot --path . --script res://tools/bake_crowd.gd`: rebuild optimized crowd poses; requires the native renderer, not `--headless`.
 - `python3 tools/generate_audio.py`: original level-up sound.
 - `python3 tools/generate_score.py`: original music and layered combat SFX (Python + ffmpeg).
 
 Model/animation attribution and license: [asset credits](assets/fighters/CREDITS.md). Barlow Condensed uses its bundled OFL license. Reference gameplay: [Endless Puncher](https://play.google.com/store/apps/details?id=com.fubugames.endlesspuncher&hl=en); no reference-game assets or code are included.
+
+Design decisions and next production priorities: [game plan](docs/game-plan.md). Current native-renderer screenshots: [UX previews](docs/ux-preview/).

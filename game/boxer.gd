@@ -24,6 +24,11 @@ var gold := false
 var role := "rookie"
 var alternate := false
 var active := false
+var dying:=false
+var death_clock:=0.0
+var death_push:=Vector3.ZERO
+var flash_time:=0.0
+static var flash_material:StandardMaterial3D
 
 static func material(color: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -86,27 +91,7 @@ func build(is_hero: bool, elite: bool = false) -> void:
 		skin_material.shading_mode=BaseMaterial3D.SHADING_MODE_PER_VERTEX
 		crowd_mesh.set_surface_override_material(0,skin_material)
 	else:
-		body = HUMAN.instantiate()
-		add_child(body)
-		body.rotation.y = PI
-		skeleton = body.find_child("Skeleton3D", true, false)
-		animator = body.find_child("AnimationPlayer", true, false)
-		animator.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
-		skin_mesh = body.find_child("SuperHero_Male", true, false)
-		outfit = MeshInstance3D.new()
-		outfit.skin = skin_mesh.skin
-		outfit.skeleton = NodePath("..")
-		skeleton.add_child(outfit)
-		for side in ["l", "r"]:
-			var attachment := BoneAttachment3D.new()
-			skeleton.add_child(attachment)
-			attachment.bone_name = "hand_" + side
-			var glove := MeshInstance3D.new()
-			glove.mesh = RushModelFactory.bake([
-				RushModelFactory.piece("sphere", Vector3(.22,.27,.23), Vector3(0,.065,0), Color.WHITE),
-				RushModelFactory.piece("box", Vector3(.16,.08,.17), Vector3(0,-.055,0), Color("f8efd9"))],12)
-			attachment.add_child(glove)
-			gloves.append(glove)
+		_build_hero()
 	warning = MeshInstance3D.new()
 	var ring := TorusMesh.new()
 	ring.inner_radius = .88
@@ -121,8 +106,8 @@ func build(is_hero: bool, elite: bool = false) -> void:
 	warning.position.y = .12
 	configure("hero" if hero else ("brute" if elite else "rookie"))
 
-static func clothing(source: Mesh, shirt: bool) -> ArrayMesh:
-	var key := "shirt" if shirt else "shorts"
+static func clothing(source: Mesh, shirt: bool, style_id: String = "") -> ArrayMesh:
+	var key := str(source.get_instance_id())+str(shirt)+style_id
 	if outfits.has(key): return outfits[key]
 	var arrays := source.surface_get_arrays(0)
 	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX].duplicate()
@@ -138,20 +123,31 @@ static func clothing(source: Mesh, shirt: bool) -> ArrayMesh:
 	for i in range(0,indices.size(),3):
 		var v := (vertices[indices[i]]+vertices[indices[i+1]]+vertices[indices[i+2]])/3
 		var cover := (v.y > .60 and v.y < 1.065) or v.y < .22 or (v.y > 1.765 and v.z < .045)
-		if shirt and v.y >= 1.06 and v.y < 1.49: cover = true
+		if shirt and v.y >= 1.06 and v.y < 1.56: cover = true
+		if style_id in ["raven","volt","sol"] and v.y<1.05:cover=true
 		if cover: chosen.append_array(PackedInt32Array([indices[i],indices[i+1],indices[i+2]]))
 	for i in vertices.size(): vertices[i] += normals[i] * .016
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_INDEX] = chosen
 	arrays[Mesh.ARRAY_COLOR] = colors
+	# Imported extra UV channels use custom formats. The outfit only needs UV0/UV1
+	# and vertex color; omit unused custom channels when rebuilding its surface.
+	for slot in range(Mesh.ARRAY_CUSTOM0, Mesh.ARRAY_CUSTOM3 + 1): arrays[slot] = null
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	outfits[key] = mesh
 	return mesh
 
 func configure(kind: String) -> void:
+	dying=false
+	death_clock=0
+	flash_time=0
+	_flash_target().material_overlay=null
+	body.position=Vector3.ZERO
+	body.rotation=Vector3(0,PI,0)
+	if crowd_mesh!=null:crowd_mesh.transparency=0
 	role = kind
-	if hero: outfit.mesh = clothing(skin_mesh.mesh, false)
+	if hero: outfit.mesh = clothing(skin_mesh.mesh, character_id != "atlas",character_id)
 	var tint: Color = RushRoster.character(character_id).color if hero else {"rookie":Color("d74f52"),"runner":Color("6886d6"),"brute":Color("c59245"),"boss":Color("8c63b3")}.get(role,Color("d74f52"))
 	var cloth := material(tint)
 	cloth.vertex_color_use_as_albedo = true
@@ -189,10 +185,18 @@ func configure(kind: String) -> void:
 		crowd_mesh.mesh=crowd_library.clips.Idle[0]
 
 func set_character(id: String) -> void:
-	character_id = id
+	if character_id != id:
+		character_id = id
+		remove_child(body)
+		body.queue_free()
+		gloves.clear()
+		_build_hero()
 	configure("hero")
 
 func animate(delta: float, moving: bool) -> void:
+	if flash_time>0:
+		flash_time=maxf(0,flash_time-delta)
+		if flash_time<=0:_flash_target().material_overlay=null
 	phase += delta
 	punch_time = maxf(0,punch_time-delta)
 	hit_time = maxf(0,hit_time-delta)
@@ -229,3 +233,80 @@ func set_gold(enabled: bool) -> void:
 	gold = enabled
 	var tint: Color = Color("e9b741") if gold else RushRoster.character(character_id).color
 	for glove in gloves: glove.material_override.albedo_color = tint
+
+func _build_hero() -> void:
+	body = (load("res://assets/fighters/boxer_female.gltf") if RushWardrobe.female(character_id) else HUMAN).instantiate()
+	add_child(body)
+	body.rotation.y = PI
+	skeleton = body.find_child("Skeleton3D", true, false)
+	animator = body.find_child("AnimationPlayer", true, false)
+	animator.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	skin_mesh = body.find_child("Superhero_Female" if RushWardrobe.female(character_id) else "SuperHero_Male", true, false)
+	outfit = MeshInstance3D.new()
+	outfit.skin = skin_mesh.skin
+	outfit.skeleton = NodePath("..")
+	skeleton.add_child(outfit)
+	for side in ["l", "r"]:
+		var attachment := BoneAttachment3D.new()
+		skeleton.add_child(attachment)
+		attachment.bone_name = "hand_" + side
+		var glove := MeshInstance3D.new()
+		glove.mesh = RushModelFactory.bake([
+			RushModelFactory.piece("sphere", Vector3(.22,.27,.23), Vector3(0,.065,0), Color.WHITE),
+			RushModelFactory.piece("box", Vector3(.16,.08,.17), Vector3(0,-.055,0), Color("f8efd9"))],12)
+		attachment.add_child(glove)
+		gloves.append(glove)
+	RushWardrobe.build(skeleton,character_id)
+
+func hurt(flash:bool=true) -> void:
+	hit_time=.23
+	punch_time=0
+	if hero:animator.play("Hit_Chest",.045)
+	else:crowd_clip=""
+	if not flash:return
+	if flash_material==null:
+		flash_material=StandardMaterial3D.new()
+		flash_material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+		flash_material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+		flash_material.albedo_color=Color(1,.64,.35,.48)
+		flash_material.depth_draw_mode=BaseMaterial3D.DEPTH_DRAW_DISABLED
+	flash_time=.10
+	_flash_target().material_overlay=flash_material
+
+func _flash_target() -> MeshInstance3D:
+	return skin_mesh if hero else crowd_mesh
+
+func begin_defeat(direction:Vector3) -> void:
+	active=false
+	dying=true
+	death_clock=0
+	death_push=direction*3.2
+	warning.visible=false
+	hit_time=0
+	punch_time=0
+	launch_time=0
+	body.position=Vector3.ZERO
+	body.rotation=Vector3(0,PI,0)
+	_flash_target().material_overlay=null
+	flash_time=0
+	crowd_mesh.transparency=0
+
+func animate_defeat(delta:float,stage:int) -> bool:
+	if not dying:return true
+	death_clock+=delta
+	position=RushArenaLayout.move(position,death_push*exp(-death_clock*7)*delta,stage,.35)
+	var frames:Array=crowd_library.clips.Death01
+	crowd_mesh.mesh=frames[mini(frames.size()-1,int(clampf(death_clock/.72,0,1)*(frames.size()-1)))]
+	crowd_mesh.transparency=clampf((death_clock-1.10)/.35,0,1)
+	if death_clock>=1.45:
+		finish_defeat()
+		return true
+	return false
+
+func finish_defeat() -> void:
+	dying=false
+	death_clock=0
+	visible=false
+	if crowd_mesh!=null:
+		crowd_mesh.transparency=0
+		crowd_mesh.material_overlay=null

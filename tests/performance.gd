@@ -4,6 +4,15 @@ func run():
 	root.get_node("MobileCore").save = CoreSaveStore.new("user://benchmark-disposable.json")
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
+	var args:=OS.get_cmdline_user_args()
+	if args.size()>2:
+		root.get_node("MobileCore").save.data.progress.unlocked_stage=4
+		game.stage=int(args[2])
+	if args.size()>3:
+		var save=root.get_node("MobileCore").save
+		save.grant("benchmark-fighter",5000)
+		RushRoster.unlock(save,"character",args[3])
+		RushRoster.equip(save,"character",args[3])
 	game.start_run()
 	game.set_process(false)
 	game.set_physics_process(false)
@@ -32,7 +41,7 @@ func run():
 		samples.append(float(now-last)/1000.0)
 		last=now
 	samples.sort()
-	var metrics := {"viewport":str(root.get_texture().get_size()),"stress":stress,"median_frame_ms":samples[90],"p95_frame_ms":samples[171],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"primitives":Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),"enemies":game.enemies.size(),"nodes":Performance.get_monitor(Performance.OBJECT_NODE_COUNT)}
+	var metrics := {"viewport":str(root.get_texture().get_size()),"stress":stress,"stage":game.stage,"character":game.player.character_id,"median_frame_ms":samples[90],"p95_frame_ms":samples[171],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"primitives":Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),"enemies":game.enemies.size(),"nodes":Performance.get_monitor(Performance.OBJECT_NODE_COUNT)}
 	print(JSON.stringify(metrics))
 	var file := FileAccess.open(OS.get_cmdline_user_args()[0],FileAccess.WRITE)
 	file.store_string(JSON.stringify(metrics,"  "))

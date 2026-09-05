@@ -11,6 +11,29 @@ func _draw() -> void:
 	var factor := minf(size.x, size.y) / 32.0
 	draw_set_transform(size * 0.5 - Vector2.ONE * 16 * factor, 0, Vector2.ONE * factor)
 	match kind:
+		"right":line([Vector2(12,6),Vector2(22,16),Vector2(12,26)])
+		"play":polygon([Vector2(10,5),Vector2(27,16),Vector2(10,27)])
+		"ad":
+			draw_rect(Rect2(3,7,26,19),tint,false,2)
+			polygon([Vector2(13,11),Vector2(22,17),Vector2(13,22)])
+		"quake":
+			line([Vector2(2,24),Vector2(11,24),Vector2(14,17),Vector2(19,28),Vector2(23,24),Vector2(30,24)])
+			line([Vector2(16,3),Vector2(16,14),Vector2(11,9)])
+			line([Vector2(16,14),Vector2(21,9)])
+		"cyclone":
+			var points:=[]
+			for i in 50:
+				var a:=i*.24
+				points.append(Vector2(16,16)+Vector2.from_angle(a)*(2+i*.23))
+			line(points)
+		"uppercut":
+			line([Vector2(8,28),Vector2(8,19),Vector2(20,9),Vector2(20,3)])
+			line([Vector2(14,8),Vector2(20,3),Vector2(26,8)])
+			line([Vector2(14,28),Vector2(14,22),Vector2(25,13)])
+		"flurry":
+			for i in 3:line([Vector2(3,7+i*8),Vector2(14+i*3,7+i*8)])
+			draw_rect(Rect2(19,4,10,15),tint,false,2)
+			line([Vector2(20,19),Vector2(22,24),Vector2(27,24),Vector2(28,19)])
 		"fist":
 			line([Vector2(9,25),Vector2(6,15),Vector2(9,9),Vector2(14,9),Vector2(15,6),Vector2(23,6),Vector2(27,11),Vector2(26,20),Vector2(21,25),Vector2(9,25)])
 			line([Vector2(10,25),Vector2(11,29),Vector2(21,29),Vector2(22,25)])

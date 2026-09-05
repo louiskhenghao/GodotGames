@@ -146,7 +146,8 @@ func run() -> void:
 	game.start_run()
 	game.hp = 0
 	game._simulate(0.02)
-	check(game.mode == "result", "zero health ends run")
+	check(game.mode == "defeat", "zero health offers an optional revive")
+	game.finish_run(false)
 	await expanded_checks(game, core)
 	game.queue_free()
 	await process_frame
@@ -199,6 +200,7 @@ func expanded_checks(game: Node3D, core: Node) -> void:
 	game.hp = 50
 	game._hit(enemy,1000)
 	check(game.hp == 52, "knockout restores health with Fighting spirit")
+	game._update_knockouts(2.0) # Recycle after the new visible fall completes.
 	var pooled_id: int = enemy.get_instance_id()
 	var recycled = game._spawn(Vector3(0,0,-1), "brute")
 	check(recycled.get_instance_id() == pooled_id and recycled.burn == 0 and recycled.frost == 0, "reused actor resets status effects")

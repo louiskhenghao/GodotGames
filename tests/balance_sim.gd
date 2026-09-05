@@ -11,6 +11,7 @@ func run():
 	game.start_run()
 	var steps := 0
 	while game.mode != "result" and steps<72000:
+		if game.mode=="defeat":game.finish_run(false);break
 		if game.mode=="upgrade":
 			var choice: String=game.options[0].id
 			for entry in game.options:

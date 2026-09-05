@@ -24,9 +24,9 @@ func run():
 	fighter.skin_mesh.mesh=reduce(fighter.skin_mesh.mesh,1800)
 	fighter.outfit.mesh=reduce(fighter.outfit.mesh,550)
 	var library := RushCrowdLibrary.new()
-	for clip in ["Idle","Jog_Fwd","Punch_Jab","Punch_Cross","Hit_Chest"]:
+	for clip in ["Idle","Jog_Fwd","Punch_Jab","Punch_Cross","Hit_Chest","Death01"]:
 		var duration: float = fighter.animator.get_animation(clip).length
-		var count := maxi(1,ceili(duration*24)) if clip != "Idle" else 1
+		var count := 18 if clip=="Death01" else (maxi(1,ceili(duration*24)) if clip != "Idle" else 1)
 		library.durations[clip]=duration
 		library.clips[clip]=[]
 		for i in count:

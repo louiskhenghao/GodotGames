@@ -3,8 +3,8 @@ extends RefCounted
 const ROUND_SECONDS := 90.0
 const MAX_ENEMIES := 48
 const RING_LIMIT := 6.05
-const PRODUCTS := {"gold_gloves": {"entitlement": "gold_gloves"}}
-const REWARDS := {"training_coins": 60}
+const PRODUCTS := {"gold_gloves": {"entitlement": "gold_gloves"},"remove_ads":{"entitlement":"remove_ads"}}
+const REWARDS := {"training_coins":60,"revive":0,"victory_bonus":0}
 const STAGES := [
 	{"name":"THE UNDERGROUND","detail":"A floodlit boxing arena. Win your first belt.","boss":"IRON JACK","tint":Color("39d6c4"),"difficulty":1.0,"reward":100},
 	{"name":"NEON SIEGE","detail":"Street crews surround you beneath the neon signs.","boss":"THE COLLECTOR","tint":Color("b397ff"),"difficulty":1.12,"reward":140},

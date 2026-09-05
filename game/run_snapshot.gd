@@ -5,7 +5,7 @@ const NUMBERS := ["stage","hp","max_hp","damage","reach","move_speed","cooldown"
 static func vector(v: Vector3) -> Array: return [v.x,v.y,v.z]
 static func unpack(v: Array) -> Vector3: return Vector3(v[0],v[1],v[2])
 static func capture(game: Node3D) -> Dictionary:
-	var state := {"version":1,"run_mode":game.run_mode,"character":game.player.character_id,"technique":game.technique_id,"ranks":game.ranks.duplicate(),"position":vector(game.player.position),"rotation":game.player.rotation.y,"boss_spawned":game.boss_spawned,"boss_defeated":game.boss_defeated,"upgrade":game.mode=="upgrade","options":[],"enemies":[],"pickups":[],"director":{"number":game.director.number,"target":game.director.target,"quota":game.director.quota,"spawned":game.director.spawned,"rest":game.director.rest,"clearing":game.director.clearing}}
+	var state := {"version":1,"knocked_out":game.mode=="defeat","revive_used":game.revive_used,"protection":game.invulnerable,"run_mode":game.run_mode,"character":game.player.character_id,"technique":game.technique_id,"ranks":game.ranks.duplicate(),"position":vector(game.player.position),"rotation":game.player.rotation.y,"boss_spawned":game.boss_spawned,"boss_defeated":game.boss_defeated,"upgrade":game.mode=="upgrade","options":[],"enemies":[],"pickups":[],"director":{"number":game.director.number,"target":game.director.target,"quota":game.director.quota,"spawned":game.director.spawned,"rest":game.director.rest,"clearing":game.director.clearing}}
 	for key in NUMBERS: state[key]=game.get(key)
 	for entry in game.options: state.options.append(entry.id)
 	for enemy in game.enemies:
@@ -18,10 +18,14 @@ static func valid(state: Variant) -> bool:
 		if not (state.get(key) is float or state.get(key) is int) or not is_finite(float(state[key])): return false
 	for key in ["boss_spawned","boss_defeated","upgrade"]:
 		if not state.get(key) is bool: return false
+	for key in ["knocked_out", "revive_used"]:
+		if state.has(key) and not state[key] is bool: return false
+	if state.has("protection"):
+		if not (state.protection is int or state.protection is float) or not is_finite(float(state.protection)) or state.protection < 0: return false
 	if not (state.get("rotation") is int or state.get("rotation") is float): return false
 	if not state.get("character") is String or RushRoster.character(state.character).id!=state.character: return false
 	if not state.get("technique") is String or RushRoster.move(state.technique).id!=state.technique: return false
-	if state.hp <= 0 or state.max_hp <= 0 or state.xp_needed <= 0: return false
+	if (state.hp <= 0 and not state.get("knocked_out",false)) or state.max_hp <= 0 or state.xp_needed <= 0: return false
 	if state.stage < 0 or state.stage >= RushBalance.STAGES.size(): return false
 	if not state.get("director") is Dictionary or not state.get("ranks") is Dictionary: return false
 	for key in ["number","target","quota","spawned","rest"]:
@@ -55,6 +59,7 @@ static func restore(game: Node3D, state: Dictionary) -> void:
 	game.player.position=unpack(state.position)
 	game.player.rotation.y=state.rotation
 	game.arena.set_stage(game.stage)
+	game._reset_combat_camera()
 	for data in state.enemies:
 		var enemy: RushBoxer = game._spawn(unpack(data.position),data.role)
 		for key in ["health","max_health","speed","attack_timer","windup","burn","burn_damage","frost","dot_clock"]: enemy.set(key,data[key])
@@ -66,12 +71,16 @@ static func restore(game: Node3D, state: Dictionary) -> void:
 		game.pickups.append(pickup)
 	game.boss_spawned=state.boss_spawned
 	game.boss_defeated=state.boss_defeated
-	game.invulnerable=.8
+	game.invulnerable=maxf(.8,float(state.get("protection",.8)))
+	game.revive_used=state.get("revive_used",false)
 	game.options.clear()
 	for id in state.options:
 		var entry := RushBalance.ability(id)
 		if not entry.is_empty(): game.options.append(entry)
-	if state.upgrade and not game.options.is_empty():
+	if state.get("knocked_out",false):
+		game.mode="defeat"
+		game.hud.revive_offer()
+	elif state.upgrade and not game.options.is_empty():
 		game.mode="upgrade"
 		game.hud.abilities(game.options)
 	else:

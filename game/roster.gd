@@ -51,3 +51,13 @@ static func equip(store: CoreSaveStore, category: String, id: String) -> bool:
 	next.progress["selected_"+category] = id
 	if category == "character": next.progress.selected_move = character(id).move
 	return store.commit(next)
+
+static func visual(id: String) -> Dictionary:
+	return {
+		"barrage":{"short":"FLURRY","color":Color("55dfc3"),"icon":"flurry","hint":"Six fast punches. Tracks one target.","tag":"SINGLE TARGET"},
+		"quake":{"short":"QUAKE","color":Color("edaa72"),"icon":"quake","hint":"Slam the ground. Stagger a crowd.","tag":"AREA + STAGGER"},
+		"cyclone":{"short":"CYCLONE","color":Color("c1a2f4"),"icon":"cyclone","hint":"Keep moving while your fists spin.","tag":"MOBILE AREA"},
+		"thunder":{"short":"THUNDER","color":Color("74caff"),"icon":"bolt","hint":"Lightning jumps through eight targets.","tag":"CHAIN ATTACK"},
+		"dragon":{"short":"UPPERCUT","color":Color("f591a9"),"icon":"uppercut","hint":"Launch nearby enemies into the air.","tag":"BURST + LAUNCH"},
+		"meteor":{"short":"FIRE WAVE","color":Color("f4ce68"),"icon":"flame","hint":"Pierce a line of enemies with fire.","tag":"RANGED + PIERCE"}
+	}.get(id,{"short":"QUAKE","color":Color("edaa72"),"icon":"quake","hint":"Slam the ground.","tag":"AREA"})

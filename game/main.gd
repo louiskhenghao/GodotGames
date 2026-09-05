@@ -14,8 +14,13 @@ var hud: RushHUD
 var camera: Camera3D
 var podium: Node3D
 var camera_home := Vector3(16, 22, 16)
+var follow_camera:=RushFollowCamera.new()
+var knockouts:Array[RushBoxer]=[]
+var impact_voice_clock:=0.0
 var mode := "home"
 var stage := 0
+var queued_replay:=false
+var revive_used:=false
 var restoring := false
 var run_mode := "sprint"
 var director := RushWaveDirector.new()
@@ -121,6 +126,9 @@ func _ready() -> void:
 	hud.game = self
 	add_child(hud)
 	apply_settings()
+	MobileCore.commerce.reward_ready.connect(_claim_ad_reward)
+	MobileCore.commerce.completed.connect(_commerce_transition)
+	for receipt_id in MobileCore.save.data.get("reward_receipts",{}).keys(): _claim_ad_reward(receipt_id)
 	var recovered := 0 if has_resume() else RushProgress.recover(MobileCore.save)
 	go_home()
 	if MobileCore.save.unsupported_version: hud.toast("This save needs a newer game version. Progress is read-only.")
@@ -165,11 +173,11 @@ func apply_settings() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		if mode in ["playing","paused","upgrade"]:
+		if mode in ["playing","paused","upgrade","defeat"]:
 			checkpoint()
 			if mode == "playing": pause_run()
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if mode in ["playing", "paused", "upgrade"]: checkpoint()
+		if mode in ["playing", "paused", "upgrade", "defeat"]: checkpoint()
 		get_tree().quit()
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -182,9 +190,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_Q: technique()
 
 func _clear_combat() -> void:
-	for enemy in enemies:
-		enemy.active = false
-		enemy.visible = false
+	for enemy in enemy_pool:
+		enemy.active=false
+		enemy.finish_defeat()
+	knockouts.clear()
 	for pickup in pickups: pickup.visible = false
 	for glove in orbiters: glove.visible = false
 	enemies.clear()
@@ -210,7 +219,8 @@ func go_home() -> void:
 	# Lights and environment still affect the showroom while arena geometry is hidden.
 	camera.position = Vector3(5, 3.7, 8)
 	camera.look_at(Vector3(0, 1.75, 0))
-	camera.position -= camera.basis.y * 1.05
+	camera.position -= camera.basis.y * 1.30
+	hud.current_page="home"
 	_frame_showroom()
 	_play_music("menu")
 	hud.home()
@@ -242,7 +252,7 @@ func start_run() -> void:
 	podium.visible = false
 	camera.position = camera_home
 	camera.look_at(Vector3.ZERO)
-	camera.size = 21.5
+	camera.size = 24.0 if stage in [1,3] else 21.5
 	var fighter := selected_character()
 	player.set_character(fighter.id)
 	technique_id = selected_move()
@@ -272,6 +282,7 @@ func start_run() -> void:
 	rerolls = 2
 	technique_clock = 0
 	completed_waves = 0
+	revive_used=false
 	director.begin(run_mode)
 	dash_clock = 0
 	dash_time = 0
@@ -285,15 +296,17 @@ func start_run() -> void:
 	checkpoint_clock = 15
 	run_id = "run:" + Crypto.new().generate_random_bytes(16).hex_encode()
 	player.position = Vector3.ZERO
+	_reset_combat_camera()
 	player.set_gold(MobileCore.save.data.entitlements.get("gold_gloves", false))
 	_play_music("fight" if stage != 1 else "street")
 	if not restoring: checkpoint()
 	hud.playing()
 
-func checkpoint() -> void:
-	if not run_id.is_empty():
-		if not RushProgress.checkpoint(MobileCore.save, run_id, run_coins, stage, kills, RushRunSnapshot.capture(self)):
-			hud.toast("Could not save checkpoint. Free storage and finish the round to retry.")
+func checkpoint() -> bool:
+	if run_id.is_empty():return false
+	var saved:=RushProgress.checkpoint(MobileCore.save,run_id,run_coins,stage,kills,RushRunSnapshot.capture(self))
+	if not saved:hud.toast("Could not save. Free storage and retry.")
+	return saved
 
 func pause_run() -> void:
 	if mode != "playing": return
@@ -306,7 +319,7 @@ func resume_run() -> void:
 	hud.playing()
 
 func finish_run(won: bool) -> void:
-	if mode not in ["playing", "paused", "result"]: return
+	if mode not in ["playing", "paused", "result","defeat"]: return
 	if mode != "result":
 		result_won = won
 		if won: run_coins += int(RushBalance.STAGES[stage].reward)
@@ -315,12 +328,12 @@ func finish_run(won: bool) -> void:
 	hud.result(result_won, saved)
 
 func _process(delta: float) -> void:
-	player.animate(delta, mode == "playing" and _movement().length_squared() > 0.01)
+	if mode in ["playing","home"]:player.animate(delta, mode == "playing" and _movement().length_squared() > 0.01)
 	if mode == "home":
-		player.rotation.y += delta * 0.08
+		if hud.current_page=="move_demo": _update_technique(delta)
 	elif mode == "playing":
 		shake = maxf(0, shake - delta)
-		camera.position = camera_home + Vector3(randf_range(-shake, shake), 0, randf_range(-shake, shake)) if vfx.enabled else camera_home
+		follow_camera.update(camera,player.position,get_viewport().get_visible_rect().size,delta,false,shake if vfx.enabled and not MobileCore.save.data.settings.get("reduced_motion",false) else 0.0)
 		hud.update_stats()
 
 func _physics_process(delta: float) -> void:
@@ -328,8 +341,10 @@ func _physics_process(delta: float) -> void:
 
 func _simulate(delta: float) -> void:
 	if mode != "playing": return
+	_update_knockouts(delta)
+	impact_voice_clock=maxf(0,impact_voice_clock-delta)
 	if hp <= 0:
-		finish_run(false)
+		_knockout()
 		return
 	if hit_stop > 0:
 		hit_stop = maxf(0,hit_stop-delta)
@@ -364,9 +379,7 @@ func _simulate(delta: float) -> void:
 			finish_run(false)
 			return
 	var movement := dash_direction if dash_time > 0 else _movement()
-	player.position += movement * (16 if dash_time > 0 else move_speed) * delta
-	player.position.x = clampf(player.position.x, -RushBalance.RING_LIMIT, RushBalance.RING_LIMIT)
-	player.position.z = clampf(player.position.z, -RushBalance.RING_LIMIT, RushBalance.RING_LIMIT)
+	player.position = RushArenaLayout.move(player.position,movement*(16 if dash_time>0 else move_speed)*delta,stage)
 	if movement.length_squared() > 0.01: player.face(movement)
 	spawn_clock -= delta
 	if spawn_clock <= 0:
@@ -374,14 +387,14 @@ func _simulate(delta: float) -> void:
 			spawn_clock = maxf(.40,1.1-wave*.11) / float(RushBalance.STAGES[stage].difficulty)
 			if enemies.size() < RushBalance.MAX_ENEMIES-(0 if boss_spawned else 1):
 				var angle := randf()*TAU
-				_spawn(Vector3(cos(angle),0,sin(angle))*6.1)
+				_spawn(RushArenaLayout.spawn_point(stage,angle))
 		elif run_mode != "classic" and not director.clearing and director.spawned < director.quota:
 			spawn_clock = maxf(.24,.65-wave*.008)
 			if director.boss_wave() and director.spawned == 0: _spawn_boss()
 			else:
 				var angle := randf()*TAU
 				var kind := "runner" if wave%3 == 1 and director.spawned%3 == 0 else ("brute" if wave%3 == 2 and director.spawned%4 == 0 else "rookie")
-				_spawn(Vector3(cos(angle),0,sin(angle))*6.1,kind)
+				_spawn(RushArenaLayout.spawn_point(stage,angle),kind)
 			director.spawned += 1
 	if arena.update_hazards(elapsed):
 		for vent in arena.vents:
@@ -394,7 +407,7 @@ func _simulate(delta: float) -> void:
 	for enemy: RushBoxer in enemies.duplicate():
 		if enemy.active: _update_enemy(enemy, delta)
 	if hp <= 0:
-		finish_run(false)
+		_knockout()
 		return
 	_update_skills(delta)
 	for pickup: MeshInstance3D in pickups.duplicate():
@@ -416,6 +429,7 @@ func _build_neighbors() -> void:
 		neighbor_grid[key].append(enemy)
 
 func _update_enemy(enemy: RushBoxer, delta: float) -> void:
+	var start_position:=enemy.position
 	enemy.burn = maxf(0, enemy.burn - delta)
 	enemy.frost = maxf(0, enemy.frost - delta)
 	enemy.dot_clock -= delta
@@ -427,8 +441,7 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 	if enemy.launch_time > 0:
 		enemy.position += enemy.knockback*delta
 		enemy.knockback=enemy.knockback.move_toward(Vector3.ZERO,delta*20)
-		enemy.position.x=clampf(enemy.position.x,-6.25,6.25)
-		enemy.position.z=clampf(enemy.position.z,-6.25,6.25)
+		enemy.position=RushArenaLayout.move(start_position,enemy.position-start_position,stage,.33*enemy.scale.x)
 		enemy.animate(delta,false)
 		return
 	var direction := player.position - enemy.position
@@ -456,20 +469,21 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 				for other: RushBoxer in neighbor_grid.get(cell + Vector2i(x, y), []):
 					var away := enemy.position - other.position
 					if away.length_squared() < 0.81 and away.length_squared() > 0.001: separation += away.normalized() * 0.8
-		if distance > 0.9: enemy.position += (direction.normalized() * enemy.speed * slow + separation) * delta
+		if distance > 0.9: enemy.position += (RushArenaLayout.steer(enemy.position,player.position,stage) * enemy.speed * slow + separation) * delta
 		if distance < (2.3 if enemy.role == "boss" else 1.1) and enemy.attack_timer <= 0:
 			enemy.windup = 0.9 if enemy.role == "boss" else 0.32
 	enemy.position += enemy.knockback * delta
 	enemy.knockback = enemy.knockback.move_toward(Vector3.ZERO, delta * 20)
-	enemy.position.x = clampf(enemy.position.x, -6.25, 6.25)
-	enemy.position.z = clampf(enemy.position.z, -6.25, 6.25)
+	enemy.position=RushArenaLayout.move(start_position,enemy.position-start_position,stage,.33*enemy.scale.x)
 	enemy.animate(delta, distance > 0.9 and enemy.windup <= 0)
 
 func _take_damage(amount: float) -> void:
 	if invulnerable > 0 or hp <= 0: return
 	hp = maxf(0, hp - amount * (1 - rank_of("armor") * 0.1))
 	invulnerable = 0.45
-	player.hit_time = 0.18
+	player.hurt(vfx.enabled)
+	audio.play(load("res://assets/hurt.wav"),randf_range(.94,1.05))
+	hud.flash_damage()
 	shake = 0.14
 	combo = 0
 	vfx.burst(player.position + Vector3.UP, Color("ff6e63"), 8)
@@ -639,6 +653,7 @@ func _advance_waves(delta: float) -> bool:
 			if run_mode == "ladder":
 				stage=mini(4,(wave-1)/5)
 				arena.set_stage(stage)
+				_reset_combat_camera()
 				_play_music("street" if stage==1 else "fight")
 			hud.toast("WAVE %d / %d  ·  %s" % [wave,director.target,director.modifier()])
 	return false
@@ -673,15 +688,18 @@ func _movement() -> Vector3:
 func _spawn(at: Vector3, kind: String = "") -> RushBoxer:
 	var enemy: RushBoxer
 	for candidate in enemy_pool:
-		if not candidate.active:
+		if not candidate.active and not candidate.dying:
 			enemy = candidate
 			break
+	if enemy==null and not knockouts.is_empty():
+		enemy=knockouts.pop_front()
+		enemy.finish_defeat()
 	if enemy == null: return null
 	if kind.is_empty():
 		var roll := randf()
 		kind = "brute" if wave >= 3 and roll < 0.18 else ("runner" if wave >= 2 and roll < 0.40 else "rookie")
 	enemy.configure(kind)
-	enemy.position = at
+	enemy.position = RushArenaLayout.constrain(at,stage,.4)
 	var factor: float = RushBalance.STAGES[stage].difficulty
 	enemy.max_health = (24 + wave * (3.0 if run_mode == "classic" else .85)) * factor * {"rookie": 1.0, "runner": 0.75, "brute": 2.4, "boss": 18.0}.get(kind, 1)
 	if kind == "boss" and run_mode != "classic": enemy.max_health = (180+wave*12)*factor
@@ -696,7 +714,7 @@ func _spawn_boss() -> void:
 		var removed: RushBoxer = enemies.pop_back()
 		removed.active = false
 		removed.visible = false
-	boss = _spawn(Vector3(0, 0, -5.6), "boss")
+	boss = _spawn(RushArenaLayout.spawn_point(stage,-PI*.5), "boss")
 	boss_spawned = true
 	hud.toast(RushBalance.STAGES[stage].boss + " enters the ring!")
 
@@ -734,7 +752,8 @@ func _attack() -> void:
 func _hit(enemy: RushBoxer, amount: float, status: bool = true, critical: bool = false) -> void:
 	if not enemy.active: return
 	enemy.health -= amount
-	enemy.hit_time = 0.15
+	enemy.hurt(vfx.enabled)
+	if critical:hit_stop=maxf(hit_stop,.035)
 	enemy.knockback = (enemy.position - player.position).normalized() * (2.0 if enemy.role == "boss" else 6.0)
 	if status:
 		if rank_of("burn") > 0:
@@ -761,8 +780,12 @@ func _hit(enemy: RushBoxer, amount: float, status: bool = true, critical: bool =
 					break
 		else: xp += 1
 		enemies.erase(enemy)
-		enemy.active = false
-		enemy.visible = false
+		enemy.begin_defeat((enemy.position-player.position).normalized())
+		knockouts.append(enemy)
+		if knockouts.size()>10:knockouts.pop_front().finish_defeat()
+		if impact_voice_clock<=0:
+			audio.play(load("res://assets/fall.wav"),randf_range(.85,1.1))
+			impact_voice_clock=.16
 
 func rank_of(id: String) -> int:
 	return int(ranks.get(id, 0))
@@ -785,7 +808,7 @@ func reroll() -> void:
 	hud.abilities(options)
 
 func choose_ability(id: String) -> void:
-	if mode != "upgrade": return
+	if mode != "upgrade" or hud.upgrade_closing: return
 	var offered := false
 	for entry in options:
 		if entry.id == id: offered = true
@@ -799,14 +822,19 @@ func choose_ability(id: String) -> void:
 		"nova": nova = true; nova_clock = 0
 		"feet": move_speed *= 1.12
 		"vitality": max_hp += 20; hp += 20
-	resume_run()
+	hud.close_upgrade()
 
 func haptic(duration: int) -> void:
 	if MobileCore.save.data.settings.get("haptics", true) and (OS.has_feature("android") or OS.has_feature("ios")):
 		Input.vibrate_handheld(duration)
 
 func _frame_showroom() -> void:
-	if mode != "home": return
+	if mode!="home":
+		if mode in ["playing","paused","upgrade","defeat"]:_reset_combat_camera()
+		return
+	if hud.current_page=="circuits":
+		_frame_venue()
+		return
 	var viewport := get_viewport().get_visible_rect().size
 	camera.size = 5.5 * maxf(1.0, (viewport.x/viewport.y) / (540.0/960.0))
 
@@ -842,3 +870,123 @@ func _exit_tree() -> void:
 	if music != null:
 		music.stop()
 		music.stream=null
+
+func preview_character(id:String) -> void:
+	if mode!="home":return
+	_clear_combat()
+	player.set_character(id)
+	player.scale*=1.78
+	player.position=Vector3.ZERO
+	player.face(Vector3(.6,0,1))
+	_frame_showroom()
+
+func demo_move(id:String) -> void:
+	if mode!="home":return
+	hud.move_demo(id)
+	_clear_combat()
+	for i in 4:
+		var enemy:=_spawn(Vector3(-1.8+i*1.2,0,-1.7),"rookie")
+		enemy.health=100000
+	player.face(Vector3.FORWARD)
+	_cast_move(id,1.0)
+
+func ads_removed() -> bool:
+	return MobileCore.save.data.entitlements.get("remove_ads",false)
+
+func _knockout() -> void:
+	if mode!="playing":return
+	if revive_used:
+		finish_run(false)
+		return
+	mode="defeat"
+	hp=0
+	checkpoint()
+	hud.revive_offer()
+
+func request_revive() -> void:
+	if mode!="defeat" or revive_used:return
+	if not checkpoint():return
+	MobileCore.commerce.reward_context("revive",{"run_id":run_id})
+
+func request_victory_bonus() -> void:
+	if mode!="result" or not result_won or result_bonus_claimed():return
+	if not MobileCore.save.data.transactions.has(run_id):return
+	MobileCore.commerce.reward_context("victory_bonus",{"run_id":run_id})
+
+func result_bonus_claimed() -> bool:
+	var record:Dictionary=MobileCore.save.data.progress.get("last_result",{})
+	return record.get("id")==run_id and record.get("bonus_claimed",false)
+
+func _claim_ad_reward(id:String) -> void:
+	var outcome:=RushAdRewards.claim(MobileCore.save,id)
+	if not outcome.get("ok",false):
+		if outcome.get("retry",false):hud.toast("Reward is saved for retry. Free some storage, then reopen the game.")
+		return
+	if outcome.benefit=="revive" and outcome.run_id==run_id and mode=="defeat":
+		hp=outcome.hp
+		revive_used=true
+		invulnerable=3
+		for enemy in enemies:
+			var away:=enemy.position-player.position
+			if away.length()<2.3:
+				if away.length()<.01:away=Vector3.RIGHT
+				enemy.position=RushArenaLayout.constrain(player.position+away.normalized()*3,stage,.5)
+				enemy.windup=0
+				enemy.warning.visible=false
+		mode="paused"
+		checkpoint()
+		hud.paused()
+		hud.toast("Back on your feet. 60% health + 3 seconds of protection.")
+	elif outcome.benefit=="victory_bonus":
+		if mode=="result" and outcome.run_id==run_id:hud.result(result_won,true)
+		hud.toast("Extra %d coins saved."%outcome.coins)
+
+func leave_result() -> void:
+	_transition_result(false)
+
+func replay_result() -> void:
+	_transition_result(true)
+
+func _transition_result(replay:bool) -> void:
+	if mode!="result" or not MobileCore.save.data.transactions.has(run_id):return
+	var key:=run_id
+	go_home()
+	var progress:Dictionary=MobileCore.save.data.progress
+	if not ads_removed() and int(progress.get("runs",0))%3==0 and progress.get("last_interstitial_run","")!=key and progress.get("last_rewarded_run","")!=key:
+		var next:=MobileCore.save.data.duplicate(true)
+		next.progress.last_interstitial_run=key
+		if MobileCore.save.commit(next):
+			queued_replay=replay
+			MobileCore.commerce.interstitial("post_run")
+			return
+	if replay:start_run()
+
+func _commerce_transition(_success:bool,_message:String) -> void:
+	if queued_replay and mode=="home" and MobileCore.commerce.pending.is_empty():
+		queued_replay=false
+		start_run()
+
+func _reset_combat_camera() -> void:
+	follow_camera.update(camera,player.position,get_viewport().get_visible_rect().size,0,true)
+
+func _update_knockouts(delta:float) -> void:
+	for enemy in knockouts.duplicate():
+		if enemy.animate_defeat(delta,stage):knockouts.erase(enemy)
+
+func preview_venue(index:int) -> void:
+	if mode!="home":return
+	_clear_combat()
+	player.visible=false
+	podium.visible=false
+	arena.showcase.visible=false
+	arena.showroom(false)
+	arena.set_stage(index)
+	_frame_venue()
+
+func _frame_venue() -> void:
+	var viewport:=get_viewport().get_visible_rect().size
+	camera.size=25.5*maxf(1,(viewport.x/viewport.y)/(540.0/960.0))
+	camera.position=camera_home
+	camera.look_at(Vector3.ZERO)
+	# Lift the actual arena into the upper preview, above the venue selector.
+	camera.position-=camera.basis.y*(camera.size/(viewport.x/viewport.y))*.21

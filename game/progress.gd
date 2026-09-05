@@ -16,6 +16,7 @@ static func settle(store: CoreSaveStore, id: String, coins: int, stage: int, kil
 		progress["wins_" + str(stage)] = int(progress.get("wins_" + str(stage), 0)) + 1
 	progress["best_wave_"+challenge] = maxi(int(progress.get("best_wave_"+challenge,0)),waves)
 	if won: progress["clears_"+challenge] = int(progress.get("clears_"+challenge,0))+1
+	progress.last_result={"id":id,"coins":maxi(0,coins),"won":won,"bonus_claimed":false}
 	progress.erase("pending_run")
 	return store.commit(next)
 

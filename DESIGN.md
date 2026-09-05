@@ -7,7 +7,7 @@ Extend the existing underground boxing identity: midnight blue surfaces, warm iv
 - Animated 3D fighter showroom on a cyan-edged podium. Keep the character above the nameplate and the primary action visible.
 - Five isometric venues: underground ring, neon street ambush, skyline helipad, industrial furnace hall and dawn temple courtyard. Foreground street buildings stay low to preserve combat visibility. Warm/cool lighting identifies each venue.
 - Hero uses a continuous textured humanoid with a real skeleton. Crowd geometry shares reduced 24 Hz baked poses from the same source animations. Keep body proportions and animation recognizable at the gameplay camera distance.
-- Gameplay information belongs above the ring; active moves belong below it. Pause, technique cooldown, ultimate availability and dodge cooldown must be readable at a glance.
+- Gameplay information belongs above the ring; active moves are circular floating icons on the right; the left lower half belongs to movement. Pause, technique cooldown, ultimate availability and dodge cooldown must be readable at a glance.
 - Full-height secondary screens with scrollable content support shorter phones and tablets. No essential button may be reachable only through a decorative animation.
 - Combat feedback uses short punch animation, bounded particle bursts, damage numbers, visible attack warnings and expanding area rings. Camera shake and effects can be disabled.
 - Canvas expands to device aspect ratio, with native safe-area insets and second-finger skill controls. Physical-device verification remains required.
@@ -17,3 +17,13 @@ Extend the existing underground boxing identity: midnight blue surfaces, warm iv
 - Ground-slam cracks/debris, cyclone rings, lightning chains, piercing fire and tracking punch trails must remain visually distinct. Crowd launch reactions create a genuine stagger window.
 - An unobtrusive lower-screen gradient protects action-label contrast against tall scenery. Menus scroll; core combat controls remain visible.
 - Original rhythmic music layers support the menu, general fights and street venue. Effects have separate transients for fists, heavy slams, electricity, wind and knockouts.
+
+## UX refinement
+
+- Home has one dominant Play/Resume action and three destinations: Fighter, Skills, Shop.
+- Fighter selection is a swipe/arrow carousel with one visible 3D model, three stat bars, a signature icon and one selection/unlock button. Preview does not change the saved loadout.
+- Skill choice uses six semantically colored icons and short names. Reveal one tactical hint at a time and provide a real effect preview.
+- Model identity comes from two anatomical bases and silhouette-changing equipment, not just palettes.
+- Venue boundaries and map thumbnails share a convex polygon definition. Collision props and perimeter dressing support the same layout.
+- Toasts appear below the top header, clear on navigation and never block bottom actions.
+- Ads stay off the fighting screen. Voluntary rewards are explicit, limited and retained after Remove Ads. Never stack an interstitial immediately after an earned rewarded video.

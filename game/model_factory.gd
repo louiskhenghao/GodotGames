@@ -16,6 +16,12 @@ static func bake(parts: Array, detail: int = 12) -> ArrayMesh:
 		if part.shape == "box":
 			primitive = BoxMesh.new()
 			primitive.size = Vector3.ONE
+		elif part.shape=="cylinder":
+			primitive=CylinderMesh.new()
+			primitive.top_radius=.5
+			primitive.bottom_radius=.5
+			primitive.height=1
+			primitive.radial_segments=detail
 		else:
 			primitive = SphereMesh.new()
 			primitive.radius = 0.5
@@ -24,9 +30,10 @@ static func bake(parts: Array, detail: int = 12) -> ArrayMesh:
 			primitive.rings = detail / 2
 		var source: Array = primitive.get_mesh_arrays()
 		var base := vertices.size()
+		var rotation:=Basis.from_euler(part.get("rotation",Vector3.ZERO))
 		for i in source[Mesh.ARRAY_VERTEX].size():
-			vertices.append(source[Mesh.ARRAY_VERTEX][i] * part.size + part.at)
-			normals.append((source[Mesh.ARRAY_NORMAL][i] / part.size).normalized())
+			vertices.append(rotation*(source[Mesh.ARRAY_VERTEX][i] * part.size) + part.at)
+			normals.append(rotation*(source[Mesh.ARRAY_NORMAL][i] / part.size).normalized())
 			colors.append(part.color)
 		for index in source[Mesh.ARRAY_INDEX]: indices.append(base + index)
 	var arrays := []

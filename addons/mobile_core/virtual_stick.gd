@@ -7,10 +7,12 @@ var tip := Vector2.ZERO
 var finger := -1
 var radius := 62.0
 var enabled := false
+var left_side_only:=true
 var blocked_rects: Array[Rect2] = []
 
 func _can_begin(point: Vector2) -> bool:
-	if point.y < 160: return false
+	var local:=_local(point)
+	if local.y < size.y*.30 or (left_side_only and local.x>size.x*.54): return false
 	for rect in blocked_rects:
 		if rect.has_point(point): return false
 	return true
@@ -56,6 +58,10 @@ func _move(point: Vector2) -> void:
 
 func _draw() -> void:
 	if finger == -1:
+		if enabled:
+			var center:=Vector2(size.x*.19,size.y*.85)
+			draw_arc(center,52,0,TAU,48,Color(.65,.85,.82,.30),2,true)
+			draw_circle(center,18,Color(.65,.85,.82,.18))
 		return
 	draw_circle(origin, radius, Color(0.04, 0.10, 0.16, 0.45))
 	draw_arc(origin, radius, 0, TAU, 48, Color(0.5, 1, 0.9, 0.6), 2, true)

@@ -37,6 +37,7 @@ func load_profile() -> void:
 func _valid(value: Variant) -> bool:
 	if not value is Dictionary:
 		return false
+	if value.has("reward_receipts") and not value.reward_receipts is Dictionary:return false
 	return value.get("version") == 1 and value.get("coins") is float and value.coins >= 0 and value.get("entitlements") is Dictionary and value.get("transactions") is Dictionary and value.get("progress") is Dictionary and value.get("settings") is Dictionary
 
 func commit(next: Dictionary) -> bool:
