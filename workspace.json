@@ -1,0 +1,9 @@
+{
+  "godot": "4.5.1",
+  "packages": {
+    "mobile-core": {
+      "source": "packages/mobile-core/addon",
+      "mount": "addons/mobile_core"
+    }
+  }
+}

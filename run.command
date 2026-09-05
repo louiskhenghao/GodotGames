@@ -11,4 +11,5 @@ if [[ -z "$game_engine" ]]; then
   print 'Install Godot 4.5.1 or set GODOT_BIN to your Godot executable.'
   exit 1
 fi
-exec "$game_engine" --path "$project_dir" "$@"
+export GODOT_BIN="$game_engine"
+exec python3 "$project_dir/tools/workspace.py" run RingRush "$@"

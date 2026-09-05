@@ -5,4 +5,12 @@ export_credentials.cfg
 *.keystore
 *.mobileprovision
 .DS_Store
-/assets/fighters/source/spacekit/
+__pycache__/
+games/*/addons/mobile_core/
+games/*/addons/.mobile_core.sync.json
+games/*/docs/*-preview/
+games/*/docs/preview-*.png
+artifacts/
+*.p12
+*.p8
+*.jks
