@@ -73,7 +73,9 @@ func run():
  check(enemy.visible and enemy.crowd_mesh.mesh!=pose,"fall animates through real shared skeletal poses")
  var fresh=game._spawn(Vector3.ZERO,"rookie")
  check(fresh!=enemy,"spawning preserves the current falling animation")
- game._update_knockouts(1.2)
+ game._update_knockouts(.90)
+ check(enemy.crowd_mesh.get_surface_override_material(0).albedo_color.a<1,"corpse fade uses materials supported by Compatibility renderer")
+ game._update_knockouts(.30)
  check(not enemy.dying and not enemy.visible and game.knockouts.is_empty(),"finished fall returns the actor to the pool")
  for i in 16:
   var target=game._spawn(Vector3.ZERO,"rookie")
@@ -82,6 +84,9 @@ func run():
  var children:int=game.get_child_count()
  game._update_knockouts(2)
  check(game.get_child_count()==children,"death presentation creates no new scene actors")
+ game._clear_combat()
+ var reused=game._spawn(Vector3.ZERO,"rookie")
+ check(reused.crowd_mesh.get_surface_override_material(0).albedo_color.a==1 and not reused.dying,"pooled fighter is fully opaque when reused")
  game._clear_combat()
  game.xp=game.xp_needed
  var scene_camera:Transform3D=game.camera.transform
@@ -93,6 +98,7 @@ func run():
  check(game.hud.screen==old_screen and game.hud.stats==old_header,"popup preserves the combat HUD beneath it")
  check(game.camera.transform==scene_camera and game.player.visible,"popup keeps the same scene and camera")
  check(not game.hud.stick.enabled,"popup stops held movement")
+ check(game.hud.dash_button.disabled and game.hud.special_button.disabled,"popup also disables keyboard focus on background actions")
  var elapsed:float=game.elapsed
  game._simulate(2)
  check(game.elapsed==elapsed,"fight clock stays paused while choosing")

@@ -64,6 +64,12 @@ var crowd_mesh: MeshInstance3D
 var crowd_clip := ""
 var crowd_time := 0.0
 static var crowd_library: RushCrowdLibrary
+static var variants:Dictionary={}
+var crowd_poses:RushCrowdLibrary
+var attack_target:=Vector3.ZERO
+var rush_time:=0.0
+var rush_direction:=Vector3.ZERO
+var rush_hit:=false
 var skeleton: Skeleton3D
 var animator: AnimationPlayer
 var skin_mesh: MeshInstance3D
@@ -80,12 +86,16 @@ func build(is_hero: bool, elite: bool = false) -> void:
 	hero = is_hero
 	if not hero:
 		if crowd_library == null: crowd_library=load("res://assets/fighters/crowd.res")
+		if variants.is_empty():
+			variants["raven"]=load("res://assets/fighters/crowd_raven.res")
+			variants["titan"]=load("res://assets/fighters/crowd_titan.res")
+		crowd_poses=crowd_library
 		body=Node3D.new()
 		body.rotation.y=PI
 		add_child(body)
 		crowd_mesh=MeshInstance3D.new()
 		body.add_child(crowd_mesh)
-		crowd_mesh.mesh=crowd_library.clips.Idle[0]
+		crowd_mesh.mesh=crowd_poses.clips.Idle[0]
 		var skin_material := material(Color.WHITE)
 		skin_material.albedo_texture=load("res://assets/fighters/T_Superhero_Male_Dark.png")
 		skin_material.shading_mode=BaseMaterial3D.SHADING_MODE_PER_VERTEX
@@ -145,10 +155,19 @@ func configure(kind: String) -> void:
 	_flash_target().material_overlay=null
 	body.position=Vector3.ZERO
 	body.rotation=Vector3(0,PI,0)
-	if crowd_mesh!=null:crowd_mesh.transparency=0
+	if crowd_mesh!=null:_set_crowd_alpha(1.0)
 	role = kind
+	attack_target=Vector3.ZERO
+	rush_time=0
+	rush_hit=false
+	if not hero:
+		var variant:String="raven" if kind in ["runner","spark"] else ("titan" if kind in ["brute","boss","charger","guard"] else "atlas")
+		crowd_poses=crowd_library if variant=="atlas" else variants[variant]
+		crowd_mesh.mesh=crowd_poses.clips.Idle[0]
+		var skin:StandardMaterial3D=crowd_mesh.get_surface_override_material(0)
+		skin.albedo_texture=load("res://assets/fighters/T_Superhero_Female_Dark_BaseColor.png" if variant=="raven" else "res://assets/fighters/T_Superhero_Male_Dark.png")
 	if hero: outfit.mesh = clothing(skin_mesh.mesh, character_id != "atlas",character_id)
-	var tint: Color = RushRoster.character(character_id).color if hero else {"rookie":Color("d74f52"),"runner":Color("6886d6"),"brute":Color("c59245"),"boss":Color("8c63b3")}.get(role,Color("d74f52"))
+	var tint: Color = RushRoster.character(character_id).color if hero else {"rookie":Color("d74f52"),"runner":Color("6886d6"),"brute":Color("c59245"),"boss":Color("8c63b3"),"charger":Color("ef624b"),"spark":Color("72ceff"),"guard":Color("59bfb2")}.get(role,Color("d74f52"))
 	var cloth := material(tint)
 	cloth.vertex_color_use_as_albedo = true
 	if hero: outfit.material_override = cloth
@@ -158,7 +177,7 @@ func configure(kind: String) -> void:
 	for glove in gloves:
 		glove.material_override = material(Color("e9b741") if gold and hero else tint)
 		glove.material_override.roughness = .42
-	scale = Vector3.ONE * {"hero":1.10,"rookie":1.0,"runner":.94,"brute":1.18,"boss":1.42}.get(role,1.0)
+	scale = Vector3.ONE * {"hero":1.10,"rookie":1.0,"runner":.94,"brute":1.18,"boss":1.42,"charger":1.12,"spark":.96,"guard":1.16}.get(role,1.0)
 	if hero and character_id == "titan": scale *= Vector3(1.15,1.07,1.1)
 	if hero and character_id == "zephyr": scale *= Vector3(.92,1,.92)
 	attack_timer = .7
@@ -174,6 +193,7 @@ func configure(kind: String) -> void:
 	launch_time = 0
 	phase = randf()*TAU
 	warning.visible = false
+	warning.position=Vector3.UP*.12
 	visible = true
 	active = true
 	if hero:
@@ -182,7 +202,7 @@ func configure(kind: String) -> void:
 	else:
 		crowd_time=0
 		crowd_clip="Idle"
-		crowd_mesh.mesh=crowd_library.clips.Idle[0]
+		crowd_mesh.mesh=crowd_poses.clips.Idle[0]
 
 func set_character(id: String) -> void:
 	if character_id != id:
@@ -212,8 +232,8 @@ func animate(delta: float, moving: bool) -> void:
 	if not hero:
 		if crowd_clip != clip: crowd_clip=clip; crowd_time=0
 		crowd_time += delta*(1.7 if punch_time>0 else 1.0)
-		var frames: Array = crowd_library.clips[clip]
-		var duration: float = crowd_library.durations[clip]
+		var frames: Array = crowd_poses.clips[clip]
+		var duration: float = crowd_poses.durations[clip]
 		var frame := mini(frames.size()-1,int(fmod(crowd_time,duration)/duration*frames.size()))
 		crowd_mesh.mesh=frames[frame]
 		return
@@ -289,15 +309,15 @@ func begin_defeat(direction:Vector3) -> void:
 	body.rotation=Vector3(0,PI,0)
 	_flash_target().material_overlay=null
 	flash_time=0
-	crowd_mesh.transparency=0
+	_set_crowd_alpha(1.0)
 
 func animate_defeat(delta:float,stage:int) -> bool:
 	if not dying:return true
 	death_clock+=delta
 	position=RushArenaLayout.move(position,death_push*exp(-death_clock*7)*delta,stage,.35)
-	var frames:Array=crowd_library.clips.Death01
+	var frames:Array=crowd_poses.clips.Death01
 	crowd_mesh.mesh=frames[mini(frames.size()-1,int(clampf(death_clock/.72,0,1)*(frames.size()-1)))]
-	crowd_mesh.transparency=clampf((death_clock-1.10)/.35,0,1)
+	_set_crowd_alpha(1-clampf((death_clock-1.10)/.35,0,1))
 	if death_clock>=1.45:
 		finish_defeat()
 		return true
@@ -308,5 +328,15 @@ func finish_defeat() -> void:
 	death_clock=0
 	visible=false
 	if crowd_mesh!=null:
-		crowd_mesh.transparency=0
+		_set_crowd_alpha(1.0)
 		crowd_mesh.material_overlay=null
+
+func _set_crowd_alpha(alpha:float) -> void:
+	# GeometryInstance3D.transparency is ignored by Compatibility/Mobile.
+	# Fade each actor's existing materials; restore opaque rendering on reuse.
+	if crowd_mesh==null:return
+	for surface in 2:
+		var mat:StandardMaterial3D=crowd_mesh.get_surface_override_material(surface)
+		if mat==null:continue
+		mat.transparency=BaseMaterial3D.TRANSPARENCY_DISABLED if alpha>=1 else BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color.a=alpha

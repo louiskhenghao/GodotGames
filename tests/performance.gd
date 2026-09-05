@@ -24,7 +24,7 @@ func run():
 		game.spawn_clock = 100000
 	seed(42)
 	for i in 48:
-		game._spawn(Vector3(randf_range(-6,6),0,randf_range(-6,6)))
+		game._spawn(Vector3(randf_range(-6,6),0,randf_range(-6,6)),["rookie","runner","brute","charger","spark","guard"][i%6])
 	for enemy in game.enemies:
 		if stress: enemy.health = 1000000; enemy.max_health = 1000000
 	for i in 60: await process_frame
@@ -34,6 +34,7 @@ func run():
 		if stress:
 			game._simulate(1.0/60.0)
 			game.hud.update_stats()
+			game.follow_camera.update(game.camera,game.player.position,root.get_visible_rect().size,1.0/60.0)
 		else:
 			for enemy in game.enemies: enemy.animate(1.0/60.0,true)
 		await process_frame

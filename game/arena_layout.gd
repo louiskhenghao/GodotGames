@@ -1,7 +1,16 @@
 class_name RushArenaLayout
 extends RefCounted
 ## Convex play boundaries and circular blockers shared by movement, spawning and previews.
-static func polygon(stage: int) -> PackedVector2Array:
+const SCALE:=1.30
+static func polygon(stage:int) -> PackedVector2Array:
+	var points:=base_polygon(stage)
+	for i in points.size():points[i]*=SCALE
+	return points
+static func blockers(stage:int) -> Array[Vector3]:
+	var result:=base_blockers(stage)
+	for i in result.size():result[i]*=SCALE
+	return result
+static func base_polygon(stage: int) -> PackedVector2Array:
 	match stage:
 		1:return PackedVector2Array([Vector2(-4.6,-8.7),Vector2(4.6,-8.7),Vector2(4.6,8.7),Vector2(-4.6,8.7)])
 		2:
@@ -11,7 +20,7 @@ static func polygon(stage: int) -> PackedVector2Array:
 		3:return PackedVector2Array([Vector2(-8.5,-4.5),Vector2(8.5,-4.5),Vector2(8.5,4.5),Vector2(-8.5,4.5)])
 		4:return PackedVector2Array([Vector2(-5.5,-4.6),Vector2(0,-7),Vector2(5.5,-4.6),Vector2(6,3),Vector2(0,6.8),Vector2(-6,3)])
 		_:return PackedVector2Array([Vector2(-6.05,-6.05),Vector2(6.05,-6.05),Vector2(6.05,6.05),Vector2(-6.05,6.05)])
-static func blockers(stage: int) -> Array[Vector3]:
+static func base_blockers(stage: int) -> Array[Vector3]:
 	match stage:
 		1:return [Vector3(-2.6,-3.5,.72),Vector3(2.6,3.5,.72)]
 		2:return [Vector3(-3.5,1.6,.8),Vector3(3.5,-1.6,.8)]

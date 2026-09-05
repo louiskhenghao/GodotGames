@@ -1,0 +1,116 @@
+[
+  {
+    "animations": [
+      {
+        "duration": 10.375,
+        "name": "Armature|Armature|Armature|00263ce7085eecf97ac97cd06d48c998_remap",
+        "tracks": 22
+      }
+    ],
+    "bones": [
+      "Hips",
+      "Spine",
+      "Spine1",
+      "Spine2",
+      "Neck",
+      "Head",
+      "Head_end",
+      "LeftShoulder",
+      "LeftArm",
+      "LeftForeArm",
+      "LeftHand",
+      "LeftHand_end",
+      "RightShoulder",
+      "RightArm",
+      "RightForeArm",
+      "RightHand",
+      "RightHand_end",
+      "LeftUpLeg",
+      "LeftLeg",
+      "LeftFoot",
+      "LeftToeBase",
+      "LeftToeBase_end",
+      "RightUpLeg",
+      "RightLeg",
+      "RightFoot",
+      "RightToeBase",
+      "RightToeBase_end"
+    ],
+    "file": "candidate",
+    "meshes": [
+      {
+        "materials": [
+          {
+            "name": "Material.001",
+            "texture": "(2048.0, 2048.0)"
+          }
+        ],
+        "name": "texture_pbr_v128_001",
+        "skin": true,
+        "surfaces": 1,
+        "triangles": 12481,
+        "vertices": 15937
+      }
+    ],
+    "skeletons": [
+      27
+    ]
+  },
+  {
+    "animations": [
+      {
+        "duration": 10.375,
+        "name": "Armature|Armature|Armature|39f5afe64eb927df712c0fb9326f718b_remap",
+        "tracks": 22
+      }
+    ],
+    "bones": [
+      "Hips",
+      "Spine",
+      "Spine1",
+      "Spine2",
+      "Neck",
+      "Head",
+      "Head_end",
+      "LeftShoulder",
+      "LeftArm",
+      "LeftForeArm",
+      "LeftHand",
+      "LeftHand_end",
+      "RightShoulder",
+      "RightArm",
+      "RightForeArm",
+      "RightHand",
+      "RightHand_end",
+      "LeftUpLeg",
+      "LeftLeg",
+      "LeftFoot",
+      "LeftToeBase",
+      "LeftToeBase_end",
+      "RightUpLeg",
+      "RightLeg",
+      "RightFoot",
+      "RightToeBase",
+      "RightToeBase_end"
+    ],
+    "file": "candidate_b",
+    "meshes": [
+      {
+        "materials": [
+          {
+            "name": "Material.001",
+            "texture": "(2048.0, 2048.0)"
+          }
+        ],
+        "name": "texture_pbr_v128_001",
+        "skin": true,
+        "surfaces": 1,
+        "triangles": 10840,
+        "vertices": 13381
+      }
+    ],
+    "skeletons": [
+      27
+    ]
+  }
+]

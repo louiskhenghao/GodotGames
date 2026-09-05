@@ -21,9 +21,22 @@ Extend the existing underground boxing identity: midnight blue surfaces, warm iv
 ## UX refinement
 
 - Home has one dominant Play/Resume action and three destinations: Fighter, Skills, Shop.
-- Fighter selection is a swipe/arrow carousel with one visible 3D model, three stat bars, a signature icon and one selection/unlock button. Preview does not change the saved loadout.
+- Fighter selection uses arrows to switch identities and dragging to rotate the visible model with one visible 3D model, three stat bars, a signature icon and one selection/unlock button. Preview does not change the saved loadout.
 - Skill choice uses six semantically colored icons and short names. Reveal one tactical hint at a time and provide a real effect preview.
 - Model identity comes from two anatomical bases and silhouette-changing equipment, not just palettes.
-- Venue boundaries and map thumbnails share a convex polygon definition. Collision props and perimeter dressing support the same layout.
+- Venue boundaries and real map previews share a convex polygon definition. Collision props and perimeter dressing support the same layout.
 - Toasts appear below the top header, clear on navigation and never block bottom actions.
 - Ads stay off the fighting screen. Voluntary rewards are explicit, limited and retained after Remove Ads. Never stack an interstitial immediately after an earned rewarded video.
+
+## Continuous combat refinement
+
+- Fight picker: real 3D map above; venue selection and challenge controls below.
+- Skill rewards are a protected-focus modal over the unchanged arena. Use a 0.22 s restrained scale entrance and a faster 0.12 s fade exit, with a reduced-motion alternative.
+- Do not fade the entire menu root. Secondary menu backgrounds remain opaque while their controls change.
+- The fighter stays near the center of a closer view; a small dead zone prevents camera jitter, then travel smoothly reveals the rest of the map.
+- Boxing-gym scenery enriches the showroom. Keep its lettering subordinate to the interface, and protect stat/action contrast with restrained veils.
+- Hits must visibly interrupt a foe's pose. KOs have a readable fall, ground hold and short fade. Corpse presentation is bounded and cannot award duplicate coins or interfere with wave completion.
+
+### September refinement
+
+Keep the boxing club identity, with a brighter royal-blue upgrade surface (`#163065`) and hue-tinted skill cards. Text determines card height; rank metadata never floats outside its action. Upgrade choices scroll only when the safe height requires it. Wave clear uses centered ivory text on saturated teal (`#147b72`). Floating right-side Fighter / Skills / Shop destinations leave the character dominant; Play occupies the bottom action area above any banner. Gym shows current → next values and a visible coin cost. Skill silhouettes and enemy warnings stay readable even when decorative impact effects are disabled.

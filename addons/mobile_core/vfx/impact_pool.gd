@@ -12,6 +12,8 @@ var enabled := true
 var cracks: MultiMeshInstance3D
 var crack_life := 0.0
 var instanced: MultiMeshInstance3D
+var strokes:Array[Dictionary]=[]
+var stroke_cursor:=0
 
 func _ready() -> void:
 	instanced = MultiMeshInstance3D.new()
@@ -26,7 +28,7 @@ func _ready() -> void:
 	mesh.material = material
 	instanced.multimesh.mesh = mesh
 	instanced.multimesh.instance_count = capacity
-	instanced.multimesh.custom_aabb = AABB(Vector3(-15, -2, -15), Vector3(30, 15, 30))
+	instanced.multimesh.custom_aabb = AABB(Vector3(-40, -8, -40), Vector3(80, 32, 80))
 	instanced.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(instanced)
 	cracks = MultiMeshInstance3D.new()
@@ -38,6 +40,7 @@ func _ready() -> void:
 	crack_mesh.material = material
 	cracks.multimesh.mesh = crack_mesh
 	cracks.multimesh.instance_count = 48
+	cracks.multimesh.custom_aabb = instanced.multimesh.custom_aabb
 	cracks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	cracks.visible = false
 	add_child(cracks)
@@ -59,6 +62,18 @@ func _ready() -> void:
 		node.visible = false
 		add_child(node)
 		rings.append({"node": node, "life": 0.0, "duration": 0.5, "radius": 3.0})
+	var stroke_mesh:=BoxMesh.new()
+	stroke_mesh.size=Vector3.ONE
+	for i in 48:
+		var node:=MeshInstance3D.new()
+		node.mesh=stroke_mesh
+		var m:=StandardMaterial3D.new()
+		m.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+		node.material_override=m
+		node.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.visible=false
+		add_child(node)
+		strokes.append({"node":node,"life":0.0})
 	for i in 16:
 		var node := Label3D.new()
 		node.font_size = 42
@@ -83,6 +98,9 @@ func clear() -> void:
 	for p in rings:
 		p.life = 0
 		p.node.visible = false
+	for p in strokes:
+		p.life=0
+		p.node.visible=false
 	for p in numbers:
 		p.life = 0
 		p.node.visible = false
@@ -107,8 +125,8 @@ func beam(from: Vector3, to: Vector3, color: Color) -> void:
 		instanced.multimesh.set_instance_color(cursor, color)
 		cursor = (cursor + 1) % capacity
 
-func ring(origin: Vector3, color: Color, radius: float, duration: float = 0.45) -> void:
-	if not enabled: return
+func ring(origin: Vector3, color: Color, radius: float, duration: float = 0.45, essential:bool=false) -> void:
+	if not enabled and not essential: return
 	var p := rings[ring_cursor]
 	ring_cursor = (ring_cursor + 1) % rings.size()
 	p.node.rotation = Vector3.ZERO
@@ -132,7 +150,10 @@ func damage_number(at: Vector3, value: int, critical: bool = false) -> void:
 
 func _process(delta: float) -> void:
 	crack_life = maxf(0,crack_life-delta)
-	cracks.visible = crack_life > 0 and enabled
+	cracks.visible = crack_life > 0
+	for p in strokes:
+		p.life=maxf(0,p.life-delta)
+		p.node.visible=p.life>0
 	for i in capacity:
 		var p := particles[i]
 		if p.life <= 0: continue
@@ -157,8 +178,7 @@ func _process(delta: float) -> void:
 		p.node.visible = p.life > 0
 
 func quake(origin: Vector3, color: Color, radius: float = 4.5) -> void:
-	if not enabled: return
-	crack_life = 1.1
+	crack_life = 1.4
 	for ray in 8:
 		var previous := origin + Vector3.UP*.09
 		for segment in 6:
@@ -169,16 +189,16 @@ func quake(origin: Vector3, color: Color, radius: float = 4.5) -> void:
 			cracks.multimesh.set_instance_transform(ray*6+segment,Transform3D(basis,(previous+next)*.5))
 			cracks.multimesh.set_instance_color(ray*6+segment,color)
 			previous = next
-	ring(origin,color,radius,.55)
-	ring(origin,Color("f3e9c6"),radius*.7,.35)
+	ring(origin,color,radius,.65,true)
+	ring(origin,Color("fff3b4"),radius*.7,.45,true)
 	burst(origin+Vector3.UP*.15,Color("c19b70"),48,1.6)
 
 func cyclone(origin: Vector3, color: Color, radius: float = 2.8) -> void:
-	if not enabled: return
 	for height in [.2,.8,1.4]:
 		var index := ring_cursor
-		ring(origin+Vector3.UP*height,color,radius,.28)
+		ring(origin+Vector3.UP*height,color,radius,.36,true)
 		rings[index].node.rotation.z = .10
+	if not enabled:return
 	for i in 16:
 		var angle := i*TAU/16
 		var p := particles[cursor]
@@ -187,3 +207,34 @@ func cyclone(origin: Vector3, color: Color, radius: float = 2.8) -> void:
 		p.life = .28
 		instanced.multimesh.set_instance_color(cursor,color)
 		cursor = (cursor+1)%capacity
+
+func stroke(from:Vector3,to:Vector3,color:Color,width:float=.10,duration:float=.22) -> void:
+	var direction:=to-from
+	if direction.length_squared()<.00001:return
+	var p:=strokes[stroke_cursor]
+	stroke_cursor=(stroke_cursor+1)%strokes.size()
+	p.node.transform=Transform3D(Basis.looking_at(direction,Vector3.RIGHT if absf(direction.normalized().y)>.95 else Vector3.UP).scaled(Vector3(width,width,direction.length())),(from+to)*.5)
+	p.node.material_override.albedo_color=color
+	p.node.visible=true
+	p.life=duration
+
+func lightning(from:Vector3,to:Vector3,color:Color) -> void:
+	var previous:=from
+	for i in 6:
+		var next:=from.lerp(to,(i+1)/6.0)
+		if i<5:next+=Vector3(sin(i*2.5)*.22,cos(i*2.1)*.12,0)
+		stroke(previous,next,color,.09,.32)
+		previous=next
+
+func strike(origin:Vector3,direction:Vector3,color:Color) -> void:
+	var side:=Vector3(-direction.z,0,direction.x)
+	for i in 3:
+		var start:=origin+Vector3.UP*(.8+i*.18)+side*(i-1)*.23
+		stroke(start,start+direction*(1.6+i*.16),color,.10,.16)
+
+func wall_impact(at:Vector3,color:Color) -> void:
+	ring(Vector3(at.x,0,at.z),color,1.35,.4,true)
+	for i in 6:
+		var delta:=Vector3(cos(i*TAU/6),sin(i*TAU/6),.15)*.9
+		stroke(at,at+delta,color,.10,.3)
+	burst(at,color,18,1.1)

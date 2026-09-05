@@ -62,6 +62,8 @@ func run():
  await snap("phone-fall",.025)
  game._update_knockouts(.52)
  await snap("phone-floor",.025)
+ game._update_knockouts(.40)
+ await snap("phone-fade",.025)
  game.xp=game.xp_needed
  game._level_up()
  await snap("phone-upgrade")

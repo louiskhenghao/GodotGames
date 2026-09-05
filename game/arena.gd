@@ -112,7 +112,10 @@ func _ready() -> void:
 	add_child(audience)
 
 	for child in get_children():
-		if child is GeometryInstance3D: ring_nodes.append(child)
+		if child is GeometryInstance3D:
+			ring_nodes.append(child)
+			child.position*=Vector3(RushArenaLayout.SCALE,1,RushArenaLayout.SCALE)
+			child.scale*=Vector3(RushArenaLayout.SCALE,1,RushArenaLayout.SCALE)
 	venues.append(self)
 	_build_venues()
 	_build_showcase()
@@ -158,7 +161,7 @@ func _build_venues() -> void:
 		var parts: Array = []
 		var ground: Color = [Color("243342"),Color("455569"),Color("403830"),Color("8f9c8d")][index-1]
 		_floor(venue,index,ground)
-		# Every venue has a clear 12m combat area; scenery remains outside the playable boundary.
+		# Venue geometry and shared collision boundaries use the same horizontal scale.
 		if index == 1:
 			for side in [-1,1]:
 				parts.append(RushModelFactory.piece("box",Vector3(.8,.15,16),Vector3(side*7.4,.02,0),Color("6e7780")))
@@ -178,7 +181,7 @@ func _build_venues() -> void:
 			_sign(venue,"NEON / 24",Vector3(-7,3.3,-5.9),Color("ff87c5"))
 			_sign(venue,"NO WAY OUT",Vector3(0,.04,4.8),Color("9e7180"),true)
 		elif index == 2:
-			var boundary:=RushArenaLayout.polygon(index)
+			var boundary:=RushArenaLayout.base_polygon(index)
 			for i in boundary.size():
 				var a:=boundary[i]
 				var b:=boundary[(i+1)%boundary.size()]
@@ -208,7 +211,7 @@ func _build_venues() -> void:
 			for i in 9:
 				for j in 9:
 					var tile:=Vector2(-6+i*1.5,-6+j*1.5)
-					if RushArenaLayout.constrain(Vector3(tile.x,0,tile.y),index,1).distance_to(Vector3(tile.x,0,tile.y))>.1:continue
+					if (RushArenaLayout.constrain(Vector3(tile.x,0,tile.y)*RushArenaLayout.SCALE,index,RushArenaLayout.SCALE)/RushArenaLayout.SCALE).distance_to(Vector3(tile.x,0,tile.y))>.1:continue
 					parts.append(RushModelFactory.piece("box",Vector3(1.45,.025,1.45),Vector3(-6+i*1.5,.01,-6+j*1.5),Color("a9b3a1") if (i+j)%2 else Color("9ea996")))
 			for x in [-7.5,7.5]:
 				for z in [-7.5,7.5]:
@@ -227,6 +230,7 @@ func _build_venues() -> void:
 		_batch(venue,parts)
 		_populate(venue,index)
 		_build_surroundings(venue,index)
+		venue.scale=Vector3(RushArenaLayout.SCALE,1,RushArenaLayout.SCALE)
 		venue.visible = false
 	# Two reusable steam vent telegraphs for the foundry; game owns their damage timing.
 	for at in [Vector3(-3,0,1.8),Vector3(3,0,-1.8)]:
@@ -251,7 +255,7 @@ func update_hazards(time: float) -> bool:
 	return current_stage == 3 and phase > 6
 
 func _floor(parent:Node3D,index:int,color:Color) -> void:
-	var polygon:=RushArenaLayout.polygon(index)
+	var polygon:=RushArenaLayout.base_polygon(index)
 	var triangles:=Geometry2D.triangulate_polygon(polygon)
 	var surface:=SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -276,7 +280,7 @@ func _floor(parent:Node3D,index:int,color:Color) -> void:
 
 func _populate(parent:Node3D,index:int) -> void:
 	var parts:Array=[]
-	for obstacle in RushArenaLayout.blockers(index):
+	for obstacle in RushArenaLayout.base_blockers(index):
 		var center:=Vector3(obstacle.x,0,obstacle.y)
 		if index==1:
 			parts.append(RushModelFactory.piece("box",Vector3(1.15,.8,1.15),center+Vector3.UP*.4,Color("405c64")))
@@ -292,7 +296,7 @@ func _populate(parent:Node3D,index:int) -> void:
 			parts.append(RushModelFactory.piece("sphere",Vector3(.9,.35,.9),center+Vector3.UP*.63,Color("b9b197")))
 	if index in [1,2,4]:
 		for i in 8:
-			var at:=RushArenaLayout.spawn_point(index,i*TAU/8)
+			var at:=RushArenaLayout.spawn_point(index,i*TAU/8)/RushArenaLayout.SCALE
 			at+=at.normalized()*2.3
 			parts.append(RushModelFactory.piece("box",Vector3(.25,2.1,.25),at+Vector3.UP,Color("554f43")))
 			for j in 4:
@@ -317,7 +321,7 @@ func _populate(parent:Node3D,index:int) -> void:
 	crowd.multimesh.instance_count=18
 	for i in 18:
 		var angle:=i*TAU/18
-		var at:=RushArenaLayout.spawn_point(index,angle)
+		var at:=RushArenaLayout.spawn_point(index,angle)/RushArenaLayout.SCALE
 		at+=at.normalized()*1.15
 		crowd.multimesh.set_instance_transform(i,Transform3D(Basis(Vector3.UP,atan2(-at.x,-at.z)).scaled(Vector3.ONE*.88),at))
 		crowd.multimesh.set_instance_color(i,Color.from_hsv(i*.13,.2,.85))

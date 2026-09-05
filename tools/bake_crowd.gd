@@ -9,6 +9,7 @@ func reduce(mesh: Mesh, triangles: int) -> ArrayMesh:
 	for lod in im.get_surface_lod_count(0):
 		var indices := im.get_surface_lod_indices(0,lod)
 		if indices.size()/3 >= triangles: arrays[Mesh.ARRAY_INDEX]=indices
+	for slot in range(Mesh.ARRAY_CUSTOM0,Mesh.ARRAY_CUSTOM3+1):arrays[slot]=null
 	var result := ArrayMesh.new()
 	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
 	return result
@@ -20,7 +21,9 @@ func run():
 	var fighter := RushBoxer.new()
 	root.add_child(fighter)
 	fighter.build(true)
-	fighter.outfit.mesh=RushBoxer.clothing(fighter.skin_mesh.mesh,true)
+	var variant:=OS.get_cmdline_user_args()[0] if not OS.get_cmdline_user_args().is_empty() else "atlas"
+	fighter.set_character(variant)
+	fighter.outfit.mesh=RushBoxer.clothing(fighter.skin_mesh.mesh,true,variant)
 	fighter.skin_mesh.mesh=reduce(fighter.skin_mesh.mesh,1800)
 	fighter.outfit.mesh=reduce(fighter.outfit.mesh,550)
 	var library := RushCrowdLibrary.new()
@@ -44,14 +47,15 @@ func run():
 			surface=SurfaceTool.new()
 			surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 			surface.append_from(fighter.outfit.bake_mesh_from_current_skeleton_pose(),0,Transform3D.IDENTITY)
-			for glove in fighter.gloves:
-				var transform := fighter.skeleton.global_transform.affine_inverse()*glove.global_transform
-				surface.append_from(glove.mesh,0,transform)
+			for accessory in fighter.skeleton.find_children("*","MeshInstance3D",true,false):
+				if not accessory.get_parent() is BoneAttachment3D:continue
+				var transform:Transform3D = fighter.skeleton.global_transform.affine_inverse()*accessory.global_transform
+				surface.append_from(accessory.mesh,0,transform)
 			surface.index()
 			surface.commit(mesh)
 			library.clips[clip].append(compact(mesh))
 		print("Baked ",clip," ",count," frames, triangles ",library.clips[clip][0].surface_get_array_index_len(0)/3)
-	ResourceSaver.save(library,"res://assets/fighters/crowd.res",ResourceSaver.FLAG_COMPRESS)
+	ResourceSaver.save(library,"res://assets/fighters/crowd"+("" if variant=="atlas" else "_"+variant)+".res",ResourceSaver.FLAG_COMPRESS)
 	fighter.queue_free()
 	await process_frame
 	quit()

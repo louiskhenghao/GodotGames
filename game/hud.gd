@@ -37,6 +37,9 @@ var page_body: VBoxContainer
 var toast_time := 0.0
 var touch_device := OS.has_feature("android") or OS.has_feature("ios")
 var transition: Tween
+var upgrade_scroll:ScrollContainer
+var upgrade_choices:VBoxContainer
+var toast_tween:Tween
 
 func _ready() -> void:
 	root = Control.new()
@@ -52,6 +55,7 @@ func _ready() -> void:
 	root.add_child(screen)
 	message = label("", 17, PAPER)
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	message.anchor_top=.14
@@ -61,7 +65,7 @@ func _ready() -> void:
 	message.offset_top = 0
 	message.offset_bottom = 64
 	message.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	message.add_theme_stylebox_override("normal", style(Color("183b3e"), 8))
+	message.add_theme_stylebox_override("normal", style(Color("147b72"), 12))
 	message.visible = false
 	root.add_child(message)
 	MobileCore.commerce.completed.connect(_commerce_completed)
@@ -94,6 +98,7 @@ func _process(delta: float) -> void:
 		message.visible = toast_time > 0
 
 func _input(event: InputEvent) -> void:
+	if not MobileCore.commerce.pending.is_empty():return
 	if current_page in ["fighters","home"]:
 		if event is InputEventScreenTouch:
 			if event.pressed and rotation_finger<0 and _rotation_area().has_point(event.position):
@@ -148,7 +153,7 @@ func icon(kind: String, tint: Color = TEAL, dimension: int = 32) -> RushIcon:
 	return node
 
 func button(text: String, action: Callable, primary: bool = false, glyph: String = "") -> Button:
-	var node := Button.new()
+	var node := RushContentButton.new() if text.is_empty() and glyph.is_empty() else Button.new()
 	node.text = text
 	node.custom_minimum_size.y = 60
 	node.add_theme_font_override("font", DISPLAY)
@@ -259,7 +264,9 @@ func home() -> void:
 	var loadout:=label(RushRoster.visual(game.selected_move()).short,16,RushRoster.visual(game.selected_move()).color)
 	loadout.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	name_plate.add_child(loadout)
-	var bottom:=column(.69,.92)
+	var bottom:=column(1,1)
+	bottom.offset_top=-202 if not game.ads_removed() else -156
+	bottom.offset_bottom=-62 if not game.ads_removed() else -20
 	var challenge:=button(RushWaveDirector.mode_info(game.run_mode).name+"  /  CHANGE",circuits,false,"crown")
 	challenge.custom_minimum_size.y=48
 	challenge.add_theme_font_size_override("font_size",21)
@@ -268,14 +275,35 @@ func home() -> void:
 	play.custom_minimum_size.y=66
 	play.add_theme_font_size_override("font_size",30)
 	bottom.add_child(play)
-	var nav:=row()
-	bottom.add_child(nav)
+	var nav:=VBoxContainer.new()
+	nav.name="SideNavigation"
+	nav.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	nav.offset_left=-94
+	nav.offset_right=-20
+	nav.offset_top=-144
+	nav.offset_bottom=144
+	nav.add_theme_constant_override("separation",12)
+	screen.add_child(nav)
 	for entry in [["FIGHTER",fighters,"fist"],["SKILLS",moves,"bolt"],["SHOP",shop,"coin"]]:
-		var b:=button(entry[0],entry[1],false,entry[2])
-		b.add_theme_font_size_override("font_size",19)
-		b.custom_minimum_size.y=54
-		b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		var b:=button("",entry[1],false,entry[2])
+		b.name=entry[0]
+		b.tooltip_text=entry[0]
+		b.custom_minimum_size=Vector2(74,78)
+		b.get_meta("glyph").position=Vector2(23,12)
+		var caption:=label(entry[0],16,PAPER,true)
+		caption.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+		caption.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		caption.offset_top=-30
+		caption.offset_bottom=-8
+		caption.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		b.add_child(caption)
 		nav.add_child(b)
+	var gym:=button("GYM",training,false,"fist")
+	gym.name="TrainingShortcut"
+	gym.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	gym.offset_left=20;gym.offset_right=114;gym.offset_top=85;gym.offset_bottom=135
+	gym.custom_minimum_size.y=50
+	screen.add_child(gym)
 	MobileCore.commerce.provider.set_banner(not game.ads_removed())
 
 func showroom_header(title: String) -> void:
@@ -447,37 +475,48 @@ func page(title: String, detail: String, page_name: String, back: Callable = Cal
 	return page_body
 
 func ability_card(entry: Dictionary, action: Callable, choice: bool) -> Button:
-	var b := button("",action)
-	b.custom_minimum_size.y = 120
-	var layout := HBoxContainer.new()
-	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layout.offset_left = 18
-	layout.offset_right = -16
-	layout.offset_top = 14
-	layout.offset_bottom = -14
-	layout.add_theme_constant_override("separation",18)
-	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(layout)
-	var skill_color:Color={"FIRE":Color("f3ba72"),"ICE":Color("9ccde9"),"LIGHTNING":Color("8cbfff"),"RECOVERY":Color("8dd6a8"),"DEFENSE":Color("b4b3de"),"POWER":Color("edaa72"),"TEMPO":Color("e9cb77"),"SUSTAIN":Color("8dd6a8"),"MOBILITY":Color("98c7ed"),"PRECISION":Color("efa58c"),"SPECIAL":Color("efc576"),"CONTROL":Color("c3b4ed"),"UTILITY":Color("c4d48d")}.get(entry.tag,TEAL)
-	var symbol := icon(entry.icon,skill_color,40)
-	symbol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var b: RushContentButton = button("",action)
+	b.name="Skill_"+entry.id
+	var skill_color:Color={"FIRE":Color("ffad70"),"ICE":Color("8de5ff"),"LIGHTNING":Color("91c9ff"),"RECOVERY":Color("89ffb5"),"DEFENSE":Color("d0b6ff"),"POWER":Color("ffb877"),"TEMPO":Color("ffe27c"),"SUSTAIN":Color("89ffb5"),"MOBILITY":Color("a3e1ff"),"PRECISION":Color("ffabbb"),"SPECIAL":Color("ffe27c"),"CONTROL":Color("d9bcff"),"UTILITY":Color("cfef83")}.get(entry.tag,TEAL)
+	for state in ["normal","hover","pressed"]:
+		var surface:=style(Color("183e70").lerp(skill_color,.10 if state=="normal" else .20),14)
+		surface.set_border_width_all(1)
+		surface.border_color=skill_color.darkened(.45)
+		surface.set_content_margin_all(0)
+		b.add_theme_stylebox_override(state,surface)
+	b.content=MarginContainer.new()
+	b.content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for edge in ["left","right","top","bottom"]:b.content.add_theme_constant_override("margin_"+edge,16)
+	b.content.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	b.add_child(b.content)
+	var layout:=HBoxContainer.new()
+	layout.add_theme_constant_override("separation",16)
+	layout.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	b.content.add_child(layout)
+	var symbol:=icon(entry.icon,skill_color,36)
+	symbol.size_flags_vertical=Control.SIZE_SHRINK_CENTER
 	layout.add_child(symbol)
-	var text := VBoxContainer.new()
-	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var text:=VBoxContainer.new()
+	text.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	text.add_theme_constant_override("separation",4)
+	text.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	layout.add_child(text)
-	var rank: int = game.rank_of(entry.id)
-	text.add_child(label(entry.title.to_upper(),27,PAPER,true))
-	var description := body_text(entry.detail,16,MUTED)
-	description.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	text.add_child(description)
-	text.add_child(label(entry.tag + ("    RANK %d → %d" % [rank,rank+1] if choice else "    %d / %d" % [rank,entry.max]),12,skill_color))
-	for child in text.get_children(): child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rank:int=game.rank_of(entry.id)
+	var title:=label(entry.title.to_upper(),27,PAPER,true)
+	title.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	text.add_child(title)
+	text.add_child(body_text(entry.detail,16,Color("d7e9ff")))
+	var rank_label:=body_text(entry.tag+("    RANK %d → %d"%[rank,rank+1] if choice else "    %d / %d"%[rank,entry.max]),12,skill_color)
+	rank_label.name="Rank"
+	text.add_child(rank_label)
+	for child in text.get_children():child.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	return b
 
 func abilities(options: Array) -> void:
 	if current_page not in ["playing","upgrade"]:playing()
 	_remove_upgrade()
+	for b in buttons:
+		if is_instance_valid(b):b.disabled=true
 	current_page="upgrade"
 	stick.enabled=false
 	stick.reset()
@@ -486,36 +525,50 @@ func abilities(options: Array) -> void:
 	upgrade_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(upgrade_overlay)
 	var scrim:=ColorRect.new()
-	scrim.color=Color(0.02,.04,.07,.42)
+	scrim.color=Color(.02,.04,.12,.52)
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	upgrade_overlay.add_child(scrim)
+	var center:=CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	upgrade_overlay.add_child(center)
 	upgrade_panel=PanelContainer.new()
-	upgrade_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	var width:=minf(490,root.size.x-36)
-	upgrade_panel.offset_left=-width*.5
-	upgrade_panel.offset_right=width*.5
-	upgrade_panel.offset_top=-285
-	upgrade_panel.offset_bottom=285
-	var panel_style:=style(Color("142735"),18)
+	var panel_style:=style(Color("163065"),20)
+	panel_style.set_border_width_all(2)
+	panel_style.border_color=Color("427fea")
+	panel_style.content_margin_top=20
+	panel_style.content_margin_bottom=20
 	panel_style.shadow_color=Color(0,0,0,.32)
 	panel_style.shadow_size=16
 	panel_style.shadow_offset=Vector2(0,8)
 	upgrade_panel.add_theme_stylebox_override("panel",panel_style)
-	upgrade_overlay.add_child(upgrade_panel)
+	center.add_child(upgrade_panel)
 	var col:=VBoxContainer.new()
-	col.add_theme_constant_override("separation",10)
+	col.add_theme_constant_override("separation",12)
 	upgrade_panel.add_child(col)
 	col.add_child(label("CHOOSE YOUR EDGE",35,PAPER,true))
-	col.add_child(label("LEVEL %d  ·  FIGHT PAUSED"%game.level,14,TEAL))
-	for entry in options:
-		var choice:=ability_card(entry,func():game.choose_ability(entry.id),true)
-		choice.custom_minimum_size.y=110
-		col.add_child(choice)
+	col.add_child(label("LEVEL %d  ·  PICK A POWER-UP"%game.level,14,TEAL))
+	upgrade_scroll=ScrollContainer.new()
+	upgrade_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(upgrade_scroll)
+	upgrade_choices=VBoxContainer.new()
+	upgrade_choices.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	upgrade_choices.add_theme_constant_override("separation",10)
+	upgrade_scroll.add_child(upgrade_choices)
+	for entry in options:upgrade_choices.add_child(ability_card(entry,func():game.choose_ability(entry.id),true))
 	var reroll_button:=button("REROLL  /  %d LEFT"%game.rerolls,game.reroll,false,"orbit")
 	reroll_button.custom_minimum_size.y=50
 	reroll_button.disabled=game.rerolls<=0
 	col.add_child(reroll_button)
+	upgrade_choices.minimum_size_changed.connect(_fit_upgrade)
+	upgrade_overlay.resized.connect(_fit_upgrade)
+	_fit_upgrade()
 	_animate_upgrade()
+
+func _fit_upgrade() -> void:
+	if not is_instance_valid(upgrade_panel):return
+	var width:=minf(490,root.size.x-32)
+	upgrade_panel.custom_minimum_size.x=width
+	upgrade_scroll.custom_minimum_size=Vector2(width-40,minf(upgrade_choices.get_combined_minimum_size().y,maxf(120,root.size.y-224)))
 
 func _motion_enabled() -> bool:
 	return DisplayServer.get_name()!="headless" and not MobileCore.save.data.settings.get("reduced_motion",false)
@@ -546,6 +599,8 @@ func close_upgrade() -> void:
 func _remove_upgrade() -> void:
 	if upgrade_tween!=null:upgrade_tween.kill()
 	if is_instance_valid(upgrade_overlay):
+		for b in buttons.duplicate():
+			if not is_instance_valid(b) or upgrade_overlay.is_ancestor_of(b):buttons.erase(b)
 		root.remove_child(upgrade_overlay)
 		upgrade_overlay.queue_free()
 	upgrade_overlay=null
@@ -796,20 +851,34 @@ func moves(keep_index: bool=false) -> void:
 	bottom.add_child(book)
 
 func training() -> void:
-	var col := page("THE GYM", "Permanent training. Your balance: %d coins." % MobileCore.save.data.coins,"training",home)
-	col.add_child(button("PASSIVE SKILL PLAYBOOK",skills,false,"book"))
-	col.add_child(button("COSMETIC STORE",shop,false,"crown"))
+	var fighter:Dictionary=game.selected_character()
+	var col:=page("THE GYM","%d COINS  ·  Permanent boosts for every fighter"%MobileCore.save.data.coins,"training",home)
+	col.add_child(label("BUILD YOUR "+fighter.name,28,AMBER,true))
+	col.add_child(body_text("Upgrade your base stats. Every new fight starts stronger.",16))
 	for entry in RushBalance.TRAINING:
-		var level := clampi(int(MobileCore.save.data.progress.get(entry.id,0)),0,5)
-		var cost := RushBalance.training_cost(level)
-		col.add_child(label(entry.title.to_upper()+"    %d / 5"%level,29,PAPER,true))
-		col.add_child(body_text(entry.detail,17))
-		var b := button("MAXIMUM TRAINING" if level>=5 else "TRAIN  /  %d COINS"%cost,func():
-			if MobileCore.save.buy_upgrade(entry.id,cost): training()
-			else: toast("Could not save training. Check your balance and free storage."),level<5,entry.icon)
-		b.disabled = level>=5 or MobileCore.save.data.coins<cost
+		var level:=RushTraining.level(MobileCore.save,entry.id)
+		var cost:=RushBalance.training_cost(level)
+		var heading:=row()
+		col.add_child(heading)
+		heading.add_child(icon(entry.icon,TEAL,28))
+		var title:=label(entry.title.to_upper(),28,PAPER,true)
+		title.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		heading.add_child(title)
+		heading.add_child(label("%d / 5"%level,19,TEAL,true))
+		var current:=RushTraining.display_value(fighter,entry.id,level)
+		var next:=RushTraining.display_value(fighter,entry.id,mini(5,level+1))
+		col.add_child(body_text(current+("  →  "+next if level<5 else "  ·  MAX"),25,AMBER))
+		col.add_child(body_text(entry.detail+" per level"+(" (base cooldown)" if entry.id=="mastery" else ""),16))
+		var b:=button("MAX LEVEL" if level>=5 else "UPGRADE  /  %d COINS"%cost,func():
+			if RushTraining.buy(MobileCore.save,entry.id):
+				training()
+				toast(entry.title.to_upper()+" UPGRADED")
+			else:toast("Upgrade unavailable. Check coins or free storage."),level<5,"coin")
+		b.disabled=level>=5 or MobileCore.save.data.coins<cost
+		b.set_meta("permanent_disabled",b.disabled)
 		col.add_child(b)
 		spacer(col,12)
+	col.add_child(button("GET COINS",shop,false,"coin"))
 
 func skills() -> void:
 	var in_run: bool = game.mode == "paused"
@@ -840,6 +909,17 @@ func shop() -> void:
 	buy.set_meta("permanent_disabled",buy.disabled)
 	col.add_child(buy)
 	spacer(col,16)
+	col.add_child(label("COIN PACKS",34,AMBER,true))
+	col.add_child(body_text("%d COINS  ·  Spend on fighters, moves and permanent stats."%MobileCore.save.data.coins,17))
+	for id in ["coins_500","coins_1500","coins_4000"]:
+		var pack:Dictionary=RushBalance.PRODUCTS[id]
+		col.add_child(label(pack.title,25,PAPER,true))
+		var purchase:=button(("TEST +%d COINS"%pack.coins) if test else "STORE UNAVAILABLE",func():MobileCore.commerce.buy(id),true,"coin")
+		purchase.disabled=not test
+		purchase.set_meta("permanent_disabled",not test)
+		col.add_child(purchase)
+	col.add_child(body_text("Test coin packs are free. Live prices will come from your app store.",15))
+	spacer(col,16)
 	col.add_child(button("TRAINING",training,false,"fist"))
 	col.add_child(button("GOLD GLOVES & COIN REWARDS",cosmetics,false,"coin"))
 	col.add_child(button("RESTORE PURCHASES",func():MobileCore.commerce.restore()))
@@ -864,7 +944,7 @@ func cosmetics() -> void:
 
 func settings() -> void:
 	var col := page("MAKE IT YOURS", "Tune the experience for your device.","settings",paused if game.mode=="paused" else home)
-	for entry in [["effects","IMPACT EFFECTS"],["haptics","HAPTIC FEEDBACK"],["sound","SOUND EFFECTS"],["music","MUSIC"],["low_quality","BATTERY SAVER"]]:
+	for entry in [["effects","EXTRA PARTICLES & IMPACT FLASH"],["haptics","HAPTIC FEEDBACK"],["sound","SOUND EFFECTS"],["music","MUSIC"],["low_quality","BATTERY SAVER"]]:
 		var key: String = entry[0]
 		var enabled: bool = MobileCore.save.data.settings.get(key,key!="low_quality")
 		col.add_child(button(entry[1]+"  /  "+("ON" if enabled else "OFF"),func():
@@ -874,7 +954,7 @@ func settings() -> void:
 			else: toast("Could not save settings. Free storage and try again.")))
 	var reduced:=button("REDUCED MOTION: " + ("ON" if MobileCore.save.data.settings.get("reduced_motion",false) else "OFF"),func():MobileCore.save.set_setting("reduced_motion",not MobileCore.save.data.settings.get("reduced_motion",false));settings())
 	col.add_child(reduced)
-	col.add_child(body_text("Battery saver disables real-time shadows, the audience and anti-aliasing. Gameplay and skill effects are unchanged.",16))
+	col.add_child(body_text("Skill trails and enemy warnings always remain visible. Extra particles adds sparks, damage numbers and camera shake. Battery saver reduces shadows and scenery detail.",16))
 	spacer(col)
 	col.add_child(body_text("Touch: drag to move; use dodge, technique and ultimate.\nKeyboard: WASD / arrows, Space to dodge, Q for technique, E for ultimate, Esc to pause.\nRuns pause when the app loses focus.",17))
 
@@ -894,7 +974,18 @@ func _busy(value: bool) -> void:
 
 func toast(text: String) -> void:
 	message.text = text
+	var success:bool="CLEAR" in text or "RECOVERY" in text
+	var surface:=style(Color("147b72") if success else Color("214c8d"),12)
+	surface.set_border_width_all(1)
+	surface.border_color=TEAL if success else Color("73b9ff")
+	message.add_theme_stylebox_override("normal",surface)
 	message.visible = true
+	if toast_tween!=null:toast_tween.kill()
+	message.modulate.a=1
+	if _motion_enabled():
+		message.modulate.a=.3
+		toast_tween=create_tween()
+		toast_tween.tween_property(message,"modulate:a",1.0,.18)
 	toast_time = 4
 
 func flash_damage() -> void:

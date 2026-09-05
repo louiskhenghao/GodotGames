@@ -1,0 +1,176 @@
+[
+  {
+    "animations": [
+      {
+        "duration": 2.40000009536743,
+        "name": "Death01",
+        "tracks": 22
+      },
+      {
+        "duration": 0.333333343267441,
+        "name": "Hit_Chest",
+        "tracks": 22
+      },
+      {
+        "duration": 2.5,
+        "name": "Idle",
+        "tracks": 22
+      },
+      {
+        "duration": 0.933333337306976,
+        "name": "Jog_Fwd",
+        "tracks": 22
+      },
+      {
+        "duration": 1.26666665077209,
+        "name": "Jump_Land",
+        "tracks": 22
+      },
+      {
+        "duration": 1.0,
+        "name": "Punch_Cross",
+        "tracks": 22
+      },
+      {
+        "duration": 0.866666674613953,
+        "name": "Punch_Jab",
+        "tracks": 22
+      }
+    ],
+    "bones": [
+      "Hips",
+      "Spine",
+      "Spine1",
+      "Spine2",
+      "Neck",
+      "Head",
+      "Head_end",
+      "LeftShoulder",
+      "LeftArm",
+      "LeftForeArm",
+      "LeftHand",
+      "LeftHand_end",
+      "RightShoulder",
+      "RightArm",
+      "RightForeArm",
+      "RightHand",
+      "RightHand_end",
+      "LeftUpLeg",
+      "LeftLeg",
+      "LeftFoot",
+      "LeftToeBase",
+      "LeftToeBase_end",
+      "RightUpLeg",
+      "RightLeg",
+      "RightFoot",
+      "RightToeBase",
+      "RightToeBase_end"
+    ],
+    "file": "candidate",
+    "meshes": [
+      {
+        "materials": [
+          {
+            "name": "Material.001",
+            "texture": "(2048.0, 2048.0)"
+          }
+        ],
+        "name": "texture_pbr_v128_001",
+        "skin": true,
+        "surfaces": 1,
+        "triangles": 12481,
+        "vertices": 15937
+      }
+    ],
+    "skeletons": [
+      27
+    ]
+  },
+  {
+    "animations": [
+      {
+        "duration": 2.40000009536743,
+        "name": "Death01",
+        "tracks": 22
+      },
+      {
+        "duration": 0.333333343267441,
+        "name": "Hit_Chest",
+        "tracks": 22
+      },
+      {
+        "duration": 2.5,
+        "name": "Idle",
+        "tracks": 22
+      },
+      {
+        "duration": 0.933333337306976,
+        "name": "Jog_Fwd",
+        "tracks": 22
+      },
+      {
+        "duration": 1.26666665077209,
+        "name": "Jump_Land",
+        "tracks": 22
+      },
+      {
+        "duration": 1.0,
+        "name": "Punch_Cross",
+        "tracks": 22
+      },
+      {
+        "duration": 0.866666674613953,
+        "name": "Punch_Jab",
+        "tracks": 22
+      }
+    ],
+    "bones": [
+      "Hips",
+      "Spine",
+      "Spine1",
+      "Spine2",
+      "Neck",
+      "Head",
+      "Head_end",
+      "LeftShoulder",
+      "LeftArm",
+      "LeftForeArm",
+      "LeftHand",
+      "LeftHand_end",
+      "RightShoulder",
+      "RightArm",
+      "RightForeArm",
+      "RightHand",
+      "RightHand_end",
+      "LeftUpLeg",
+      "LeftLeg",
+      "LeftFoot",
+      "LeftToeBase",
+      "LeftToeBase_end",
+      "RightUpLeg",
+      "RightLeg",
+      "RightFoot",
+      "RightToeBase",
+      "RightToeBase_end"
+    ],
+    "file": "candidate_b",
+    "meshes": [
+      {
+        "materials": [
+          {
+            "name": "Material.001",
+            "texture": "(2048.0, 2048.0)"
+          }
+        ],
+        "name": "texture_pbr_v128_001",
+        "skin": true,
+        "surfaces": 1,
+        "triangles": 10840,
+        "vertices": 13381
+      }
+    ],
+    "skeletons": [
+      27
+    ]
+  }
+]

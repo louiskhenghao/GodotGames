@@ -3,7 +3,13 @@ extends RefCounted
 const ROUND_SECONDS := 90.0
 const MAX_ENEMIES := 48
 const RING_LIMIT := 6.05
-const PRODUCTS := {"gold_gloves": {"entitlement": "gold_gloves"},"remove_ads":{"entitlement":"remove_ads"}}
+const PRODUCTS := {
+	"gold_gloves":{"entitlement":"gold_gloves","type":"non_consumable"},
+	"remove_ads":{"entitlement":"remove_ads","type":"non_consumable"},
+	"coins_500":{"coins":500,"type":"consumable","title":"POCKET MONEY"},
+	"coins_1500":{"coins":1500,"type":"consumable","title":"FIGHT PURSE"},
+	"coins_4000":{"coins":4000,"type":"consumable","title":"CHAMPION'S VAULT"}
+}
 const REWARDS := {"training_coins":60,"revive":0,"victory_bonus":0}
 const STAGES := [
 	{"name":"THE UNDERGROUND","detail":"A floodlit boxing arena. Win your first belt.","boss":"IRON JACK","tint":Color("39d6c4"),"difficulty":1.0,"reward":100},
@@ -35,7 +41,9 @@ const ABILITIES := [
 const TRAINING := [
 	{"id": "power", "title": "Power", "detail": "+3 starting punch damage", "icon": "fist"},
 	{"id": "health", "title": "Conditioning", "detail": "+10 starting health", "icon": "heart"},
-	{"id": "charge", "title": "Composure", "detail": "+10% starting special charge", "icon": "bolt"}
+	{"id": "charge", "title": "Composure", "detail": "+10% starting special charge", "icon": "bolt"},
+	{"id": "footwork", "title": "Footwork", "detail": "+4% movement speed", "icon": "dash"},
+	{"id": "mastery", "title": "Skill mastery", "detail": "4% shorter technique cooldown", "icon": "crown"}
 ]
 
 static func training_cost(level: int) -> int:

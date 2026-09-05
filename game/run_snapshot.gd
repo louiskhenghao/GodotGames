@@ -36,7 +36,7 @@ static func valid(state: Variant) -> bool:
 	if not _vector_valid(state.get("position")): return false
 	for enemy in state.enemies:
 		if not enemy is Dictionary or not _vector_valid(enemy.get("position")): return false
-		if enemy.get("role") not in ["rookie","runner","brute","boss"]: return false
+		if enemy.get("role") not in ["rookie","runner","brute","boss","charger","spark","guard"]: return false
 		for key in ["health","max_health","speed","attack_timer","windup","burn","burn_damage","frost","dot_clock"]:
 			if not (enemy.get(key) is int or enemy.get(key) is float): return false
 	for position in state.pickups:
@@ -63,6 +63,8 @@ static func restore(game: Node3D, state: Dictionary) -> void:
 	for data in state.enemies:
 		var enemy: RushBoxer = game._spawn(unpack(data.position),data.role)
 		for key in ["health","max_health","speed","attack_timer","windup","burn","burn_damage","frost","dot_clock"]: enemy.set(key,data[key])
+		enemy.windup=0
+		enemy.attack_timer=maxf(.8,enemy.attack_timer)
 		if enemy.role=="boss": game.boss=enemy
 	for i in state.pickups.size():
 		var pickup: MeshInstance3D = game.pickup_pool[i]

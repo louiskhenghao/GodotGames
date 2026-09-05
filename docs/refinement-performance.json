@@ -1,0 +1,12 @@
+{
+  "character": "zephyr",
+  "draw_calls": 364.0,
+  "enemies": 48,
+  "median_frame_ms": 8.3,
+  "nodes": 453.0,
+  "p95_frame_ms": 13.989,
+  "primitives": 726214.0,
+  "stage": 1,
+  "stress": true,
+  "viewport": "(540.0, 960.0)"
+}

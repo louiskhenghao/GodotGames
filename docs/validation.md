@@ -1,39 +1,60 @@
-# Ring Rush UX and monetization validation
+# Ring Rush quality validation
 
-Godot 4.5.1, macOS, Apple M5 Max, OpenGL Compatibility. Verified 5 September 2026. This is desktop validation; signed Android/iOS exports, native ads/billing and physical-device performance remain untested.
+Godot 4.5.1, macOS, Apple M5 Max, OpenGL Compatibility. Verified 5 September 2026. Desktop validation only; Android/iOS hardware, signed mobile builds and native ads/billing remain pending.
 
-## Automated behavior: 254 checks, zero failures
+## Behavior and animation
 
-- `tests/run_tests.gd`: 65 checks. Persistence/backup, future schemas, commerce callbacks, input, state transitions, effects, timed rounds, rewards and shared crowd geometry.
-- `tests/expansion_tests.gd`: 60 checks. All six character kits and techniques, coin unlock ownership and duplicate protection, 10/30/50-wave completion, the 25-wave five-venue ladder, run records and serialized wave-17 resume with enemies and status effects.
-- `tests/ux_ads_tests.gd`: 129 checks. Carousel preview without equipping; both anatomy meshes and valid outfit surfaces; equipment differences; six distinct skill icons/colors; right-hand round controls and simultaneous left-stick input; convex boundaries, swept dash collision, enemy navigation around every blocker and valid spawns; knockout snapshots; minimum-close time, early close without reward, no-fill, earned revive, second-death settlement; victory bonus once; interstitial cadence and queued replay, timeout removal, no stacked rewarded/interstitial ads; Remove Ads persistence and voluntary rewarded ads after purchase; duplicate/late callbacks; durable receipt recovery and failed benefit-save retry.
-- All three final runs completed without engine errors. `git diff --check` passed.
+**296 headless checks, zero failures:**
 
-Full-wave transition tests boost HP/damage to cover all transitions. They establish correctness, not final difficulty.
+- `tests/run_tests.gd`: 65 checks for saves, economy, combat, input, pause/resume and pool reuse. The pool test now waits for the visible fall to finish before expecting that actor to be reused.
+- `tests/expansion_tests.gd`: 60 checks covering all character/move kits, unlocks, 10/30/50-wave and five-venue ladder completion, records and combat snapshot restoration.
+- `tests/ux_ads_tests.gd`: 129 checks for touch ownership, collision/obstacle navigation, advertisements, revive and victory rewards, duplicate callbacks, timeout and durable reward recovery.
+- `tests/quality_tests.gd`: 42 checks covering drag rotation without character switching, arrow selection, opaque menus, locked venue previews, closer camera and dead-zone following, hit flash/recoil, fall poses and Compatibility material fading, fixed corpse budget and reuse, retained combat HUD/camera beneath the upgrade popup, paused clock/input, rerolls and duplicate choice protection.
 
-## Normal-stat balance bot
+The quality suite also ran with the native renderer: **45 checks, zero failures**. This includes the same 42 behavior checks plus entrance scale, settled scale and guarded exit behavior under a duplicate tap. All final logs were free of engine errors. `git diff --check` passed.
 
-The final `tests/balance_sim.gd -- onslaught50` run used fresh-account Atlas stats and no test health/damage boosts. It cleared 50 waves in 588.43 simulated seconds, with 808 KOs and level 23. The bot automatically responds to telegraphs and picks useful upgrades; it finished with full health through recovery/sustain. Human difficulty tuning remains necessary. This does not establish player enjoyment or retention.
+Transition tests boost HP/damage to exercise all wave boundaries. A separate normal-stat Atlas bot cleared 50 waves in **562.57 simulated seconds**, with 808 KOs and level 23. It finished with full health after sustain/recovery choices. The bot's fast reactions and automatic choices are not a substitute for human balance and enjoyment tests.
 
-## Final crowd stress measurements
+## Rendering measurement
 
-48 animated enemies retained with elevated benchmark health, elemental/orbit effects, physics and HUD updates, VSync off and 2× MSAA. 60 warmup frames and 180 samples. The table records the renderer's actual target size.
+Final stress run: **540 × 960**, Zephyr, Neon Siege, 48 active enemies, status/orbit effects, physics/HUD updates and the closer follow camera. VSync off, 2× MSAA, 60 warmup frames and 180 samples.
 
-| Scenario | Actual render target | Median frame interval | P95 | Draw calls | Scene nodes | Primitives including passes |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Titan / hexagonal temple | (540.0, 960.0) | 2.011 ms | 2.753 ms | 323 | 401 | 548,738 |
-| Zephyr / rectangular street | (820.0, 1093.0) | 1.917 ms | 2.447 ms | 312 | 395 | 544,730 |
+| Metric | Result |
+| --- | ---: |
+| Median frame interval | 2.003 ms |
+| P95 frame interval | 3.228 ms |
+| Draw calls | 334 |
+| Scene nodes | 405 |
+| Rendered primitives, including passes | 608,182 |
 
-These are short desktop measurements, not phone frame-rate claims. Crowd animation shares a compressed 6.6 MB library of reduced two-surface poses at 24 Hz. Hero equipment is built during character selection. Trees and venue props are batched; perimeter spectators are instanced. Physical phone GPU, battery, thermals, memory and SDK overlay behavior still need testing.
+This short desktop benchmark does not establish a phone frame rate or thermal budget. Characters outside the view still simulate; rendering naturally culls offscreen geometry.
+
+Crowd poses occupy approximately **8.1 MB compressed**, including 18 new fall poses. At most ten dying actors remain visible, drawn from the same pool of 48; extreme pool pressure can reclaim the oldest body. Deaths leave the active targeting/wave list immediately and cannot grant a second KO. The fall plays for 0.72 seconds, holds to 1.10 and fades by 1.45 seconds. Per-surface alpha supports the actual Compatibility renderer, unlike GeometryInstance3D.transparency.
 
 ## Visual review
 
-`tests/ux_capture.gd` captured the real Godot renderer with a disposable preview profile. Two bounded review rounds covered home, all six fighters, skills, live quake preview, modes, shop, revive, ad and victory screens, all five venues, compact-phone and tablet layouts. The batched fix corrected polygon floor winding, toast/button overlap, showroom framing and accessory placement. The final review confirmed visible floors and unobstructed primary actions. Images are under `docs/ux-preview/`; they are staged engine frames, not concept art.
+`tests/quality_capture.gd` produces staged real-engine frames using a disposable profile. Two bounded review rounds covered the gym showroom, rotated fighter, actual venue previews above the controls, shop/skill backgrounds, central and edge-following combat views, hit/fall/fade, and the upgrade popup. Phone, 320×568 small-window and tablet layouts were included. The fix batch reduced wall lettering, improved header/action contrast and verified material fading. Final images are in `docs/quality-preview/`.
 
-Native safe-area inset handling is implemented for HUD and the development banner. Real phone cutouts, gesture bars, touch latency and ads interrupted by OS events remain unverified.
+The upgrade popup retains the arena, camera and HUD; only its panel animates. It stops combat simulation and background input, enters over 0.22 seconds and dismisses over 0.12 seconds. The Reduced Motion setting skips its spatial entrance. Menu-root opacity remains stable, with actors explicitly hidden on non-showroom pages.
 
-## Scope and provenance
+## Practical limits
 
-The male/female models, textures and animation sources are CC0 Quaternius assets; see `assets/fighters/CREDITS.md`. The six identities use two anatomical source models plus distinct bone-bound equipment and clothing. They are not six separately sculpted humans. Bosses still share the telegraphed area attack, with different scaled stats.
+The six fighter identities still use two CC0 source anatomical models with original equipment and clothing. See `assets/fighters/CREDITS.md`. Current bosses share an area-slam behavior; distinct boss patterns and human playtesting are the next gameplay priorities in `game-plan.md`.
 
-Ad screens and purchases are explicit development simulations. Test rewarded ads run 15 seconds, allow closing after 5, and grant nothing on early close. The native adapter must use the SDK earned callback, and let the SDK own real video duration and close controls. Native billing, receipt verification, restore/refund reconciliation and signing remain release work in `mobile-release.md`. No test profile changes the player's real coins or unlocks.
+Safe-area and touch code are implemented but real cutouts, OS gesture bars, touch latency, background interruptions, sustained phone performance and native monetization remain unverified. Advertising and purchases remain explicit development simulations; see `mobile-release.md`.
+
+## 2026-09-06 refinement validation
+
+- Core suite: **65 checks passed**.
+- Expansion suite: **60 checks passed**, including finite 10 / 30 / 50-wave and ladder completion, resume and settlement.
+- UX / ads suite: **129 checks passed**.
+- Native quality suite: **45 checks passed**, including hit / fall / fade, popup entrance / exit, and duplicate-choice protection.
+- New refinement suite: **115 checks passed**. Tests cover five permanent stats, cap / persistence / failed-save behavior, consumable receipt deduplication / repeat purchases / restore exclusion, all six essential skills with decorative effects disabled and no enemies, charger swept collision, dodgeable locked lightning, guard mitigation, new-role snapshots, and all 18 upgrade descriptions across 320×568, 540×960 and 768×1024 windows.
+
+**414 checks, no failures** across the final suites. Fixtures use isolated disposable save files. The real debug profile's existing `effects: false` setting was not overwritten: essential feedback now remains visible while decorative particles remain off.
+
+A single batched screenshot review covered phone / small window / tablet home, fight, shop, gym, wave-clear and upgrade states plus six low-effects techniques. The confirmation batch verified the corrected female texture path. Captures are under `docs/refinement-preview/`; `overview.jpg` summarizes the final inspection. The original capture script exited before a final transient tween completed and logged a cleanup warning; its cleanup now waits for outstanding short animations. The native quality suite and stress benchmark exit without those warnings.
+
+Stress measurement on this Mac's Apple M5 Max, Godot 4.5.1 Compatibility, 540×960, Zephyr, enlarged street venue, **48 active enemies across six roles**: median **8.300 ms**, p95 **13.989 ms**, 364 draws, 726,214 rendered primitives and 453 nodes. See `refinement-performance.json`. This is a desktop measurement with a different enemy mixture from the previous baseline; it is not a phone performance claim. Android/iOS device thermals, sustained frame pacing, real SDKs and signed mobile exports remain unvalidated.
+
+Both supplied FBX files were imported, reduced and rendered with their original animation. The attempted seven-clip retarget has visible bind-pose errors and is excluded from the playable roster and both mobile exports. Original / optimized measurements and visual comparisons are in `docs/model-review/`.
