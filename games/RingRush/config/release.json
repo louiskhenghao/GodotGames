@@ -1,0 +1,11 @@
+{
+  "version": "0.8.0",
+  "build": 8,
+  "publisher": "ZX Labs",
+  "website": "https://www.zxlabs.dev",
+  "support_email": "support@zxlabs.dev",
+  "privacy_url": "",
+  "ads_provider": "unavailable",
+  "iap_provider": "unavailable",
+  "release_ready": false
+}

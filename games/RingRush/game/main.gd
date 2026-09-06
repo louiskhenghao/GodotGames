@@ -9,6 +9,10 @@ var pickups: Array[MeshInstance3D] = []
 var pickup_pool: Array[MeshInstance3D] = []
 var orbiters: Array[MeshInstance3D] = []
 var vfx: CoreImpactPool
+var ranged_combat:=RushRangedCombat.new()
+var arsenal:=RushRunArsenal.new()
+var ultimate:=RushUltimates.new()
+var support:=RushSupportCombat.new()
 var audio: CoreAudioPool
 var hud: RushHUD
 var camera: Camera3D
@@ -105,6 +109,7 @@ func _ready() -> void:
 	player = RushBoxer.new()
 	add_child(player)
 	player.build(true)
+	add_child(support)
 	# Preallocate actors and pickups. Combat never constructs or frees a fighter.
 	for i in RushBalance.MAX_ENEMIES:
 		var enemy := RushBoxer.new()
@@ -178,6 +183,7 @@ func apply_settings() -> void:
 	audio.enabled = MobileCore.save.data.settings.get("sound", true)
 	if music != null: music.volume_db = -15 if MobileCore.save.data.settings.get("music",true) else -80
 	var low: bool = MobileCore.save.data.settings.get("low_quality", false)
+	vfx.detail=0 if low or MobileCore.save.data.settings.get("reduced_motion",false) else 1
 	arena.set_quality(low)
 	get_viewport().msaa_3d = Viewport.MSAA_DISABLED if low else Viewport.MSAA_2X
 	if not vfx.enabled: vfx.clear()
@@ -200,6 +206,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_Q: technique()
 
 func _clear_combat() -> void:
+	ranged_combat.clear()
+	arsenal.clear();ultimate.clear();support.clear()
 	for enemy in enemy_pool:
 		enemy.active=false
 		enemy.finish_defeat()
@@ -238,8 +246,7 @@ func go_home() -> void:
 	hud.home()
 
 func select_stage(index: int) -> void:
-	var unlocked := clampi(int(MobileCore.save.data.progress.get("unlocked_stage", 0)), 0, 4)
-	if mode != "home" or index < 0 or index > unlocked: return
+	if mode != "home" or not RushChallenges.available(MobileCore.save,run_mode,index): return
 	stage = index
 	hud.home()
 
@@ -294,8 +301,8 @@ func start_run() -> void:
 	shake = 0
 	ranks.clear()
 	ranks[fighter.rank] = fighter.get("ranks",2 if fighter.id == "titan" else 1)
-	if fighter.rank == "feet": move_speed *= 1.12
-	if fighter.rank == "speed": cooldown *= .85
+	if fighter.rank == "feet": move_speed *= 1.06
+	if fighter.rank == "speed": cooldown *= .90
 	rerolls = 2
 	technique_clock = 0
 	completed_waves = 0
@@ -316,7 +323,9 @@ func start_run() -> void:
 	_reset_combat_camera()
 	player.set_gold(MobileCore.save.data.entitlements.get("gold_gloves", false))
 	_play_music(run_mode)
-	if not restoring: checkpoint()
+	if not restoring:
+		support.begin(MobileCore.save)
+		checkpoint()
 	hud.playing()
 
 func checkpoint() -> bool:
@@ -383,8 +392,8 @@ func _simulate(delta: float) -> void:
 	dash_time = maxf(0, dash_time - delta)
 	combo_clock -= delta
 	if combo_clock <= 0: combo = 0
-	hp = minf(max_hp, hp + rank_of("regen") * delta)
-	special_charge = minf(100, special_charge + delta * 0.7 * (1 + rank_of("fury") * 0.25))
+	hp = minf(max_hp, hp + rank_of("regen") * .25 * delta)
+	special_charge = minf(100, special_charge + delta * 0.25 * (1 + rank_of("fury") * 0.15))
 	checkpoint_clock -= delta
 	if checkpoint_clock <= 0:
 		checkpoint_clock = 15
@@ -399,7 +408,7 @@ func _simulate(delta: float) -> void:
 			finish_run(false)
 			return
 	var movement := dash_direction if dash_time > 0 else _movement()
-	player.position = RushArenaLayout.move(player.position,movement*(16 if dash_time>0 else move_speed)*delta,stage)
+	player.position = RushArenaLayout.move(player.position,movement*(16 if dash_time>0 else move_speed*(1.08 if support.speed_time>0 else 1))*delta,stage)
 	if movement.length_squared() > 0.01: player.face(movement)
 	spawn_clock -= delta
 	if spawn_clock <= 0:
@@ -413,9 +422,7 @@ func _simulate(delta: float) -> void:
 			if director.boss_wave() and director.spawned == 0: _spawn_boss()
 			else:
 				var angle := randf()*TAU
-				var kind := "runner" if wave%3 == 1 and director.spawned%3 == 0 else ("brute" if wave%3 == 2 and director.spawned%4 == 0 else "rookie")
-				if wave>=4 and director.spawned%4==1:kind=["charger","spark","guard"][(wave+director.spawned)%3]
-				if run_mode=="rift":kind=["bone","revenant","hexer"][(wave+director.spawned)%3]
+				var kind := RushEncounterRoster.pick(stage,wave,director.spawned)
 				_spawn(RushArenaLayout.spawn_point(stage,angle),kind)
 			director.spawned += 1
 	if arena.update_hazards(elapsed):
@@ -432,6 +439,9 @@ func _simulate(delta: float) -> void:
 		_knockout()
 		return
 	_update_skills(delta)
+	arsenal.update(self,delta)
+	ultimate.update(self,delta)
+	support.update(self,delta)
 	for pickup: MeshInstance3D in pickups.duplicate():
 		pickup.rotate_y(delta * 3)
 		var distance := pickup.position.distance_to(player.position)
@@ -460,6 +470,9 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 		_hit(enemy, enemy.burn_damage * 0.5, false, false)
 		vfx.burst(enemy.position + Vector3.UP, Color("ff934b"), 3)
 		if not enemy.active: return
+	if enemy.role=="boss":
+		enemy.encounter.update(self,enemy,delta)
+		return
 	if enemy.launch_time > 0:
 		enemy.rush_time=0
 		enemy.windup=0
@@ -483,9 +496,9 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 		enemy.animate(delta,true)
 		return
 	if enemy.windup<=0:enemy.face(direction)
-	var ranged:bool=enemy.role in ["spark","hexer"] or (enemy.role=="boss" and ((run_mode=="bossrush" and wave%3==0) or run_mode=="rift"))
-	var charging:bool=enemy.role in ["charger","revenant"] or (enemy.role=="boss" and run_mode=="bossrush" and wave%3==1)
-	var radius:float=2.5 if enemy.role in ["boss","brute","guard"] else 1.05
+	var ranged:bool=enemy.role in ["spark","hexer","drone","spitter","wisp","stinger","sentry"]
+	var charging:bool=enemy.role in ["charger","revenant","hound"]
+	var radius:float=2.5 if enemy.role in ["brute","guard"] else 1.05
 	if enemy.windup > 0:
 		enemy.windup -= delta * slow
 		enemy.warning.visible = true
@@ -501,17 +514,20 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 			enemy.warning.visible = false
 			enemy.warning.position=Vector3.UP*.12
 			enemy.punch()
-			enemy.attack_timer = 3.3 if enemy.role=="boss" else (2.6 if ranged or charging else 1.5)
+			enemy.attack_timer = {"stinger":2.0,"sentry":3.2}.get(enemy.role,2.6 if ranged or charging else 1.5)
 			if ranged:
-				vfx.lightning(enemy.position+Vector3.UP,enemy.attack_target+Vector3.UP*.3,Color("79cfff"))
-				vfx.ring(enemy.attack_target,Color("ff7965"),1.25,.4,true)
-				if player.position.distance_to(enemy.attack_target)<1.25:_take_damage(10)
+				var aim:Vector3=(enemy.attack_target-enemy.position).normalized()
+				var kind:String={"spitter":"acid","wisp":"seeker"}.get(enemy.role,"enemy")
+				var source:Vector3=enemy.position+Vector3.UP*.8+aim*.5
+				var spread:Array=[-.22,0,.22] if enemy.role=="drone" else ([-.12,.12] if enemy.role=="sentry" else [0])
+				for angle in spread:ranged_combat.fire(source,aim.rotated(Vector3.UP,angle),8 if enemy.role=="drone" else 10,kind,true,1.4 if enemy.role=="spitter" else 0,false,player if enemy.role=="wisp" else null)
+				vfx.muzzle(source,Color("ff9981"),.65)
 			elif charging:
 				enemy.rush_direction=(enemy.attack_target-enemy.position).normalized()
 				enemy.rush_time=.5
 				enemy.rush_hit=false
 			else:
-				if distance < radius:_take_damage(22 if enemy.role=="boss" else (10 if enemy.role in ["brute","guard"] else 6))
+				if distance < radius:_take_damage(10 if enemy.role in ["brute","guard"] else 6)
 				if radius>2:vfx.ring(enemy.position,Color("ff7965"),radius,.45,true)
 	else:
 		enemy.attack_timer -= delta * slow
@@ -526,7 +542,7 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 		if distance>preferred:enemy.position+=(RushArenaLayout.steer(enemy.position,player.position,stage)*enemy.speed*slow+separation)*delta
 		elif ranged and distance<2.4:enemy.position+=(-direction.normalized()*enemy.speed*slow+separation)*delta
 		var trigger:float=6.0 if ranged else (4.5 if charging else radius+.05)
-		if distance<trigger and enemy.attack_timer<=0:
+		if distance<trigger and enemy.attack_timer<=0 and (not ranged or RushRangedCombat._wall_fraction(enemy.position,player.position,stage,0)>=1):
 			enemy.windup=1.1 if ranged else (.85 if charging or radius>2 else .36)
 			enemy.attack_target=player.position
 	enemy.position += enemy.knockback * delta
@@ -536,7 +552,7 @@ func _update_enemy(enemy: RushBoxer, delta: float) -> void:
 
 func _take_damage(amount: float) -> void:
 	if invulnerable > 0 or hp <= 0: return
-	hp = maxf(0, hp - amount * float(growth.get("enemy_damage",1)) * (1 - rank_of("armor") * 0.1)*(1-float(growth.get("grit",0))))
+	hp = maxf(0, hp - amount * (.8 if support.shield_time>0 else 1) * float(growth.get("enemy_damage",1)) * (1 - rank_of("armor") * 0.08)*(1-float(growth.get("grit",0))))
 	invulnerable = 0.45
 	player.hurt(vfx.enabled)
 	audio.play(load("res://assets/hurt.wav"),randf_range(.94,1.05))
@@ -569,11 +585,14 @@ func _update_skills(delta: float) -> void:
 func dash() -> void:
 	if mode != "playing" or dash_clock > 0: return
 	record_action("dodges")
+	support.on_dodge(self)
 	dash_direction = _movement()
 	if dash_direction.length_squared() < 0.01: dash_direction = -player.basis.z.normalized()
 	dash_time = 0.18
 	dash_clock = 3.8 - rank_of("dash") * 0.6
 	invulnerable = maxf(invulnerable, 0.3)
+	for enemy in enemies:
+		if enemy.role=="boss" and enemy.encounter.on_dodge(self,enemy):invulnerable=maxf(invulnerable,.36)
 	vfx.burst(player.position + Vector3.UP * 0.3, Color("a0ffdf"), 12)
 	haptic(12)
 
@@ -582,7 +601,7 @@ func special() -> void:
 	special_charge = 0
 	record_action("ultimates")
 	invulnerable = 1.0
-	_cast_move(technique_id,2.2)
+	ultimate.activate(self)
 	haptic(40)
 
 func technique() -> void:
@@ -590,8 +609,11 @@ func technique() -> void:
 	technique_clock = technique_cooldown()
 	invulnerable = maxf(invulnerable,.35)
 	_cast_move(technique_id,1.0)
+	support.on_skill(self)
 
 func _cast_move(id: String, strength: float) -> void:
+	for enemy in enemies:
+		if enemy.role=="boss":enemy.encounter.arm_break()
 	var skill_rank:int=int(growth.get("skill_level",1))
 	var upgrades:=RushSkillGrowth.stats(skill_rank)
 	var fighter:=RushRoster.character(player.character_id)
@@ -617,11 +639,11 @@ func _cast_move(id: String, strength: float) -> void:
 			skill_multiplier=strength
 			audio.play(load("res://assets/whoosh.wav"),1.3)
 		"quake":
-			player.slam_time=.55
+			player.slam_time=.55;player.punch()
 			vfx.quake(player.position,tint,(4.2+charged*.4)*cast_radius)
-			_area_hit((4.2+charged*.4)*cast_radius,damage*2.6*strength)
+			_area_hit((4.2+charged*.4)*cast_radius,damage*2.6*strength,true)
 			for enemy in enemies:
-				if enemy.position.distance_to(player.position)<4.6*cast_radius: enemy.launch_time=.5; enemy.windup=0; enemy.warning.visible=false
+				if enemy.role!="boss" and enemy.position.distance_to(player.position)<4.6*cast_radius: enemy.launch_time=.5; enemy.windup=0; enemy.warning.visible=false
 			audio.play(load("res://assets/slam.wav"))
 			hit_stop = .065
 		"cyclone":
@@ -640,7 +662,7 @@ func _cast_move(id: String, strength: float) -> void:
 				if count >= 8+upgrades.stage*2 or enemy.position.distance_to(player.position)>6*cast_radius: break
 				vfx.lightning(origin,enemy.position+Vector3.UP,tint)
 				origin = enemy.position+Vector3.UP
-				_hit(enemy,damage*2.1*strength,false,true)
+				_hit(enemy,damage*2.1*strength,false,true,true)
 				count += 1
 			audio.play(load("res://assets/electric.wav"))
 		"dragon":
@@ -649,9 +671,11 @@ func _cast_move(id: String, strength: float) -> void:
 			vfx.stroke(player.position+Vector3.UP*.3,player.position+Vector3.UP*3.5,tint,.26,.5)
 			for enemy: RushBoxer in enemies.duplicate():
 				if enemy.position.distance_to(player.position)<3.0*cast_radius:
-					enemy.launch_time=.65
-					_hit(enemy,damage*4*strength,false,true)
+					if enemy.role!="boss":enemy.launch_time=.65
+					_hit(enemy,damage*4*strength,false,true,true)
 			audio.play(load("res://assets/slam.wav"),1.3)
+		"pulse","orb":
+			ranged_combat.cast(self,id,strength,cast_radius,tint)
 		"meteor":
 			projectile_position=player.position+Vector3.UP*.65
 			projectile_direction=-player.basis.z.normalized()
@@ -662,6 +686,7 @@ func _cast_move(id: String, strength: float) -> void:
 	haptic(22)
 
 func _update_technique(delta: float) -> void:
+	ranged_combat.update(self,delta)
 	if barrage_time > 0:
 		barrage_time -= delta
 		barrage_tick -= delta
@@ -678,7 +703,7 @@ func _update_technique(delta: float) -> void:
 			if closest != null:
 				player.face(closest.position-player.position)
 				vfx.beam(player.position+Vector3.UP,closest.position+Vector3.UP,Color("b6ffee"))
-				_hit(closest,damage*.95*skill_multiplier,false,true)
+				_hit(closest,damage*.95*skill_multiplier,false,true,true)
 				audio.play(HIT_SOUND,1.3)
 	if cyclone_clock > 0:
 		cyclone_clock -= delta
@@ -687,7 +712,7 @@ func _update_technique(delta: float) -> void:
 		if cyclone_tick <= 0:
 			cyclone_tick=.22
 			vfx.cyclone(player.position,cast_tint,2.7*cast_radius)
-			_area_hit(2.9*cast_radius,damage*.52*skill_multiplier)
+			_area_hit(2.9*cast_radius,damage*.52*skill_multiplier,true)
 	if projectile_time > 0:
 		projectile_time -= delta
 		var previous := projectile_position
@@ -699,21 +724,22 @@ func _update_technique(delta: float) -> void:
 			vfx.wall_impact(edge,Color("ffc66b"))
 		vfx.stroke(previous-projectile_direction*.6,projectile_position,cast_tint,.48*cast_radius,.14)
 		vfx.stroke(previous,projectile_position+projectile_direction*.15,Color("fff1aa"),.20,.12)
-		vfx.burst(projectile_position,Color("ffdd8c"),3,.4)
+		vfx.projectile(projectile_position,projectile_direction,cast_tint,"orb",.6*cast_radius)
 		for enemy: RushBoxer in enemies.duplicate():
 			if enemy.get_instance_id() in projectile_hits: continue
 			var point := Geometry3D.get_closest_point_to_segment(enemy.position+Vector3.UP*.65,previous,projectile_position)
 			if point.distance_to(enemy.position+Vector3.UP*.65)<1.2*cast_radius:
 				projectile_hits.append(enemy.get_instance_id())
-				_hit(enemy,damage*3*skill_multiplier,false,true)
+				_hit(enemy,damage*3*skill_multiplier,false,true,true)
 
 func _advance_waves(delta: float) -> bool:
 	if not director.clearing and director.spawned >= director.quota and enemies.is_empty():
 		director.clearing = true
+		ranged_combat.clear(true)
 		director.rest = director.rest_duration()
 		completed_waves = wave
 		hp = minf(max_hp,hp+max_hp*(director.recovery()+float(growth.get("recovery",0))))
-		special_charge = minf(100,special_charge+10)
+		special_charge = minf(100,special_charge+5)
 		run_coins += 15 if director.boss_wave() else 5
 		for pickup in pickups: pickup.visible=false; xp+=1
 		pickups.clear()
@@ -734,7 +760,8 @@ func _advance_waves(delta: float) -> bool:
 			boss_defeated=false
 			spawn_clock=.2
 			if run_mode == "ladder":
-				stage=mini(4,(wave-1)/5)
+				stage=RushChallenges.ladder_stage(wave)
+				player.position=RushArenaLayout.constrain(player.position,stage)
 				arena.set_stage(stage)
 				_reset_combat_camera()
 				_play_music(run_mode)
@@ -752,9 +779,9 @@ func selected_move() -> String:
 func _play_music(track:String) -> void:
 	music.play_cue(track)
 
-func _area_hit(radius: float, amount: float) -> void:
+func _area_hit(radius: float, amount: float, technique_hit:bool=false) -> void:
 	for enemy: RushBoxer in enemies.duplicate():
-		if enemy.active and enemy.position.distance_to(player.position) < radius: _hit(enemy, amount, false, false)
+		if enemy.active and enemy.position.distance_to(player.position) < radius: _hit(enemy, amount, false, false, technique_hit)
 
 func _movement() -> Vector3:
 	if hud == null: return Vector3.ZERO
@@ -773,19 +800,18 @@ func _spawn(at: Vector3, kind: String = "") -> RushBoxer:
 		enemy=knockouts.pop_front()
 		enemy.finish_defeat()
 	if enemy == null: return null
-	if kind.is_empty():
-		var roll := randf()
-		kind = "brute" if wave >= 3 and roll < 0.18 else ("runner" if wave >= 2 and roll < 0.40 else "rookie")
+	if kind.is_empty():kind=RushEncounterRoster.pick(stage,wave,randi_range(0,1000))
 	if run_mode!="rift" or hud.current_page=="move_demo":kind={"bone":"runner","revenant":"charger","hexer":"spark"}.get(kind,kind)
 	elif kind not in ["bone","revenant","hexer","boss"]:kind="bone"
-	enemy.configure(kind,run_mode=="rift")
+	enemy.configure(kind,run_mode=="rift",RushEncounterRoster.boss_model(stage) if kind=="boss" else "")
 	enemy.position = RushArenaLayout.constrain(at,stage,.4)
 	var factor: float = RushBalance.STAGES[stage].difficulty*(1.15 if run_mode=="hell" else (.85 if run_mode=="blitz" else 1.0))
-	enemy.max_health = (24 + wave * (3.0 if run_mode == "classic" else .85)) * factor * {"rookie": 1.0, "runner": 0.75, "brute": 2.4, "boss": 18.0,"charger":1.4,"spark":.9,"guard":1.8,"bone":.8,"revenant":1.3,"hexer":.95}.get(kind, 1)
+	enemy.max_health = (24 + wave * (3.0 if run_mode == "classic" else .85)) * factor * {"rookie": 1.0, "runner": 0.75, "brute": 2.4, "boss": 18.0,"charger":1.4,"spark":.9,"guard":1.8,"bone":.8,"revenant":1.3,"hexer":.95,"drone":.7,"spitter":1.5,"hound":.85,"wisp":.8,"stinger":.65,"sentry":1.8}.get(kind, 1)
 	if kind == "boss" and run_mode != "classic": enemy.max_health = (180+wave*12)*factor
 	enemy.max_health*=float(growth.get("enemy_hp",1)) if mode!="home" else 1.0
+	if run_mode!="classic" and mode!="home" and kind!="boss":enemy.max_health*=1+maxi(0,wave-8)*.028
 	enemy.health = enemy.max_health
-	enemy.speed = (1.3 + minf(1.0,wave * 0.04)) * {"rookie": 1.0, "runner": 1.6, "brute": 0.7, "boss": 0.8,"charger":1.1,"spark":1.2,"guard":.85,"bone":1.3,"revenant":1.4,"hexer":1.1}.get(kind, 1)
+	enemy.speed = (1.3 + minf(1.0,wave * 0.04)) * {"rookie": 1.0, "runner": 1.6, "brute": 0.7, "boss": 0.8,"charger":1.1,"spark":1.2,"guard":.85,"bone":1.3,"revenant":1.4,"hexer":1.1,"drone":1.3,"spitter":.75,"hound":1.6,"wisp":.95,"stinger":1.5,"sentry":.7}.get(kind, 1)
 	enemy.speed*=float(growth.get("enemy_speed",1)) if mode!="home" else 1.0
 	if run_mode=="hell":enemy.speed*=1.12
 	enemy.face(player.position - at)
@@ -799,9 +825,10 @@ func _spawn_boss() -> void:
 		removed.visible = false
 	boss = _spawn(RushArenaLayout.spawn_point(stage,-PI*.5), "boss")
 	boss_spawned = true
-	hud.toast(RushBalance.STAGES[stage].boss + " enters the ring!")
+	hud.toast(RushBalance.STAGES[stage].boss + " approaches!")
 
 func _attack() -> void:
+	if player.is_mech() and ranged_combat.auto_fire(self):return
 	var nearest: RushBoxer
 	var distance := reach
 	for enemy in enemies:
@@ -821,8 +848,8 @@ func _attack() -> void:
 		var offset := enemy.position - player.position
 		if offset.length() <= reach and offset.normalized().dot(direction) > 0.25:
 			direct.append(enemy)
-			var critical := randf() < rank_of("crit") * 0.12
-			_hit(enemy, damage * (2 if critical else 1), true, critical)
+			var critical := randf() < rank_of("crit") * 0.08
+			_hit(enemy, damage * (2 if critical else 1)*ultimate.damage_scale(), true, critical)
 	var arcs := rank_of("chain")
 	for enemy: RushBoxer in enemies.duplicate():
 		if arcs <= 0: break
@@ -832,13 +859,18 @@ func _attack() -> void:
 			arcs -= 1
 	haptic(8)
 
-func _hit(enemy: RushBoxer, amount: float, status: bool = true, critical: bool = false) -> void:
+func _hit(enemy: RushBoxer, amount: float, status: bool = true, critical: bool = false, technique_hit:bool=false, origin_kind:String="") -> void:
 	if enemy.role=="guard" and status and enemy.windup<=0:
 		amount*=.6
 		vfx.ring(enemy.position,Color("6af3df"),.8,.22,true)
 	if not enemy.active: return
+	if enemy.role=="boss":
+		amount*=enemy.encounter.damage_multiplier(self,enemy,status,technique_hit)
+	if (status or technique_hit) and origin_kind not in ["support","passive","ultimate"]:
+		support.on_hit();arsenal.on_hit(self,enemy)
 	enemy.health -= amount
 	enemy.hurt(vfx.enabled)
+	if status or technique_hit:vfx.hit_flash(enemy.position+Vector3.UP,Color("fff1b4"))
 	if critical:hit_stop=maxf(hit_stop,.035)
 	enemy.knockback = (enemy.position - player.position).normalized() * (2.0 if enemy.role == "boss" else 6.0)
 	if status:
@@ -850,14 +882,15 @@ func _hit(enemy: RushBoxer, amount: float, status: bool = true, critical: bool =
 	vfx.damage_number(enemy.position, ceili(amount), critical)
 	if enemy.health <= 0:
 		if enemy.role == "boss": audio.play(load("res://assets/ko.wav")); hit_stop=.08
+		if origin_kind in ["ranged","passive"]:record_action("ranged_kos")
 		kills += 1
 		combo += 1
 		records.best_combo=maxi(int(records.get("best_combo",0)),combo)
 		if enemy.role=="boss":record_action("boss_kos")
 		combo_clock = 4
 		run_coins += 3 if enemy.role != "boss" else 30
-		special_charge = minf(100, special_charge + 6 * (1 + rank_of("fury") * 0.25))
-		hp = minf(max_hp, hp + rank_of("leech"))
+		special_charge = minf(100, special_charge + 3.5 * (1 + rank_of("fury") * 0.15))
+		hp = minf(max_hp, hp + rank_of("leech") * .35)
 		if enemy.role == "boss": boss_defeated = true
 		if pickups.size() < 64:
 			for pickup in pickup_pool:
@@ -883,7 +916,7 @@ func _level_up() -> void:
 	xp -= xp_needed
 	level += 1
 	xp_needed += 3
-	options = RushBalance.choices(ranks, hp < max_hp)
+	options = RushBalance.choices(ranks, hp < max_hp,player.is_mech() or technique_id in ["pulse","orb","meteor"])
 	if options.is_empty(): return
 	mode = "upgrade"
 	audio.play(LEVEL_SOUND)
@@ -892,7 +925,7 @@ func _level_up() -> void:
 func reroll() -> void:
 	if mode != "upgrade" or rerolls <= 0: return
 	rerolls -= 1
-	options = RushBalance.choices(ranks, hp < max_hp)
+	options = RushBalance.choices(ranks, hp < max_hp,player.is_mech() or technique_id in ["pulse","orb","meteor"])
 	hud.abilities(options)
 
 func choose_ability(id: String) -> void:
@@ -903,12 +936,12 @@ func choose_ability(id: String) -> void:
 	if not offered: return
 	ranks[id] = rank_of(id) + 1
 	match id:
-		"power": damage *= 1.25
-		"speed": cooldown = maxf(0.18, cooldown * 0.85)
+		"power": damage *= 1.18
+		"speed": cooldown = maxf(0.18, cooldown * 0.90)
 		"range": reach += 0.35
 		"heal": hp = minf(max_hp, hp + 40)
 		"nova": nova = true; nova_clock = 0
-		"feet": move_speed *= 1.12
+		"feet": move_speed *= 1.06
 		"vitality": max_hp += 20; hp += 20
 	hud.close_upgrade()
 

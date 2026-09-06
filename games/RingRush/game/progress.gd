@@ -12,12 +12,12 @@ static func settle(store: CoreSaveStore, id: String, coins: int, stage: int, kil
 	progress.best_kos = maxi(int(progress.get("best_kos", 0)), kills)
 	progress.runs = int(progress.get("runs", 0)) + 1
 	if won and challenge!="rift":
-		progress.unlocked_stage = maxi(int(progress.get("unlocked_stage", 0)), mini(stage + 1, 4))
+		progress.unlocked_stage = maxi(int(progress.get("unlocked_stage", 0)), RushChallenges.next_stage(stage))
 		progress["wins_" + str(stage)] = int(progress.get("wins_" + str(stage), 0)) + 1
 	progress["best_wave_"+challenge] = maxi(int(progress.get("best_wave_"+challenge,0)),waves)
 	if won: progress["clears_"+challenge] = int(progress.get("clears_"+challenge,0))+1
 	progress.best_combo=maxi(int(progress.get("best_combo",0)),int(records.get("best_combo",0)))
-	for key in ["boss_kos","ultimates","dodges","casts_barrage","casts_quake","casts_cyclone","casts_thunder","casts_dragon","casts_meteor"]:
+	for key in ["ranged_kos","support_triggers","perfect_counters","guard_breaks","boss_kos","ultimates","dodges","casts_barrage","casts_quake","casts_cyclone","casts_thunder","casts_dragon","casts_meteor","casts_pulse","casts_orb"]:
 		progress[key]=int(progress.get(key,0))+maxi(0,int(records.get(key,0)))
 	var badges:=RushAchievements.evaluate(next)
 	progress.last_badges=badges

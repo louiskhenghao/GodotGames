@@ -1,0 +1,77 @@
+{
+  "assets": [
+    {
+      "id": "drone",
+      "original": "Enemy_Flying_Gun.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/cyberpunkgamekit.html",
+      "download": "https://drive.google.com/uc?export=download&id=18Hg0L72nJSSixhYxaX-2oXpzF33cComy",
+      "sha256": "e62ac34971ea73d8769d61e86ec2dfc72eb8559889bccb7578bebaea0232479e"
+    },
+    {
+      "id": "helper",
+      "original": "Enemy_Flying.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/cyberpunkgamekit.html",
+      "download": "https://drive.google.com/uc?export=download&id=14Vivg6Ukcx8CqfLNLUVaWvA91tjqS36k",
+      "sha256": "02700de283e3dcea893e4d09e89886ea66961ba118d2a193cc54f314a5ea8af6"
+    },
+    {
+      "id": "wolf",
+      "original": "Wolf.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "download": "https://drive.google.com/uc?export=download&id=1lFQoQ9ln2Z2wGuFFWObj9i5jHqUl_ftG",
+      "sha256": "cc02e9d128b5715f352ee8bea086f97a35f1d875d240de99b0f9f2775c37d415"
+    },
+    {
+      "id": "shiba",
+      "original": "ShibaInu.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "download": "https://drive.google.com/uc?export=download&id=1XWUVbmMbiG9E90OqrumueD_pBdnYdyHZ",
+      "sha256": "3236979b94a840eb72d9ce091b1361da327a96f5ce068e666680297480f30f6b"
+    },
+    {
+      "id": "fox",
+      "original": "Fox.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "download": "https://drive.google.com/uc?export=download&id=1z-CWoUC2vJxrqgGFTYlMaywpE1ooV-bA",
+      "sha256": "2f36e3c9c75ecddda85c5f9944e98ee1e88e7c679a546534aff1cea8ecde64c7"
+    },
+    {
+      "id": "spitter",
+      "original": "GreenSpikyBlob.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/ultimatemonsters.html",
+      "download": "https://drive.google.com/uc?export=download&id=125zPNBLl1VAgzhfVom9Kj29hSClaZhjF",
+      "sha256": "ff55e6424f20576cac02578d012b3527af642ef15e7bab4abd2fd8d1f51b3e7e"
+    },
+    {
+      "id": "wisp",
+      "original": "Ghost.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/ultimatemonsters.html",
+      "download": "https://drive.google.com/uc?export=download&id=1rUs1QRA9v1Y2wRYEXsfteBisTsz4JlLi",
+      "sha256": "40bea9d887874cc86b391b83e72cc5ac2cac340892e23f3d8068a568b6e61457"
+    },
+    {
+      "id": "bee",
+      "original": "Armabee.gltf",
+      "author": "Quaternius",
+      "license": "CC0-1.0",
+      "source": "https://quaternius.com/packs/ultimatemonsters.html",
+      "download": "https://drive.google.com/uc?export=download&id=1k7LbRse-00nyMQhTdJMvebPp8B-05hcG",
+      "sha256": "10ca05955ab7f7f6e2f9bd8fd85f28ed1351c945e390b1fd0fa84428b43a5916"
+    }
+  ],
+  "adaptation": "Selected native animation clips, normalized size and cached vertex-color animation poses."
+}

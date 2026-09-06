@@ -12,8 +12,8 @@ func run():
  store.data.coins=1000000
  var ids:Dictionary={}
  for badge in RushAchievements.catalog():ids[badge.id]=true
- check(ids.size()==36,"36 unique varied badges")
- for badge in RushAchievements.catalog():check(badge.icon in ["fist","bolt","crown","stairs","dumbbell","nova","shield","quake","cyclone","dash","flurry","timer","skull","flame"],"badge has an implemented icon: "+badge.id)
+ check(ids.size()==42,"42 unique varied badges")
+ for badge in RushAchievements.catalog():check(badge.icon in ["target","heart","fist","bolt","crown","stairs","dumbbell","nova","shield","quake","cyclone","dash","flurry","timer","skull","flame"],"badge has an implemented icon: "+badge.id)
  check(RushAchievements.bonuses(store.data)=={"health":0.0,"power":0.0,"cooldown":0.0},"new player has no unearned badge bonuses")
  for stat in RushBalance.TRAINING:
   var paid:=0;var start:int=store.data.coins
@@ -51,12 +51,13 @@ func run():
  # Clear explicit varied objectives in a separate record, then evaluate idempotently.
  var all:=store.data.duplicate(true)
  for entry in RushRoster.CHARACTERS:all.progress.get_or_add("unlocks",{})["character:"+entry.id]=true
- all.progress.total_kos=2000;all.progress.best_combo=50;all.progress.boss_kos=25;all.progress.ultimates=10;all.progress.dodges=50
- for mode in RushWaveDirector.MODES:all.progress["clears_"+mode.id]=1
- for i in 5:all.progress["wins_"+str(i)]=1
- for id in ["quake","cyclone","thunder"]:all.progress["casts_"+id]=20
+ all.progress.total_kos=50000;all.progress.best_combo=110;all.progress.boss_kos=300;all.progress.ultimates=300;all.progress.dodges=2000
+ all.progress.ranged_kos=4000;all.progress.support_triggers=1000;all.progress.perfect_counters=100;all.progress.guard_breaks=200
+ for mode in RushWaveDirector.MODES:all.progress["clears_"+mode.id]=20
+ for i in 5:all.progress["wins_"+str(i)]=100
+ for id in ["quake","cyclone","thunder"]:all.progress["casts_"+id]=700
  RushAchievements.evaluate(all)
- check(all.progress.badges.size()==36 and RushAchievements.evaluate(all).is_empty(),"all 36 badges reachable and never granted twice")
+ check(all.progress.badges.size()==42 and RushAchievements.evaluate(all).is_empty(),"all 42 badges reachable and never granted twice")
  var bonus:=RushAchievements.bonuses(all)
  check(bonus.health<=12 and bonus.power<=2.41 and bonus.cooldown<=.025,"badge stat rewards remain small at full completion")
  check(RushProgress.settle(rookie,"proof",100,0,10,true,"sprint",10,{"best_combo":10,"boss_kos":1,"casts_quake":20}),"fight metrics and achievements settle atomically")
@@ -79,7 +80,7 @@ func run():
  var bad:=snapshot.duplicate(true);bad.growth.skill_level=11
  check(not RushRunSnapshot.valid(bad),"out-of-range skill rank cannot resume")
  game.resume_run();game.records.clear();game.dash();game.technique_clock=0;game.technique();game.special_charge=100;game.special()
- check(game.records.dodges==1 and game.records.ultimates==1 and game.records.casts_barrage==2,"actual combat actions drive style achievements")
+ check(game.records.dodges==1 and game.records.ultimates==1 and game.records.casts_barrage==1,"actual combat actions drive style achievements")
  game.finish_run(false);game.go_home()
  var recorded:Dictionary=game.records.duplicate(true)
  game.demo_move("quake");await settle()
@@ -115,7 +116,7 @@ func run():
   var upgrade:Button=game.hud.screen.find_child("UpgradeSkill",true,false)
   check(game.hud.root.get_global_rect().encloses(upgrade.get_global_rect()),"skill upgrade stays visible: "+str(resolution))
   game.hud.achievements();await settle()
-  check(game.hud.page_body.find_children("Badge_*","PanelContainer",true,false).size()==36,"all badge cards build: "+str(resolution))
+  check(game.hud.page_body.find_children("Badge_*","PanelContainer",true,false).size()==42,"all badge cards build: "+str(resolution))
  var bank:=CoreSaveStore.new("user://growth-bank.json")
  RushProgress.checkpoint(bank,"contract-bank",100,0,10,{"growth":{"coins":1.25},"records":{"boss_kos":1},"run_mode":"sprint","completed_waves":2})
  check(RushProgress.recover(bank)==125 and bank.data.coins==125 and bank.data.progress.boss_kos==1,"banked contract applies multiplier and metrics once")

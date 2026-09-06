@@ -1,0 +1,14 @@
+{
+  "boss_phase": 2,
+  "character": "onyx",
+  "draw_calls": 392.0,
+  "enemies": 48,
+  "median_frame_ms": 7.002,
+  "nodes": 481.0,
+  "p95_frame_ms": 13.388,
+  "primitives": 612672.0,
+  "simulated_seconds": 1.9,
+  "stage": 0,
+  "stress": true,
+  "viewport": "(540.0, 960.0)"
+}

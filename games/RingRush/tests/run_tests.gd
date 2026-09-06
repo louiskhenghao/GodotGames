@@ -178,13 +178,13 @@ func expanded_checks(game: Node3D, core: Node) -> void:
 	game.invulnerable = 0
 	game.ranks.armor = 2
 	game._take_damage(10)
-	check(is_equal_approx(game.hp, hp-8), "armor reduces incoming damage")
+	check(is_equal_approx(game.hp, hp-8.4), "armor reduces incoming damage")
 	game._take_damage(10)
-	check(is_equal_approx(game.hp, hp-8), "swarm hits share a short invulnerability window")
+	check(is_equal_approx(game.hp, hp-8.4), "swarm hits share a short invulnerability window")
 	game.invulnerable = 0
 	game.ranks.regen = 1
 	game._simulate(0.5)
-	check(game.hp > hp-8, "regeneration restores health")
+	check(game.hp > hp-8.4, "regeneration restores health")
 	game._clear_combat()
 	var enemy = game._spawn(Vector3(0,0,-1), "rookie")
 	game.damage = 5
@@ -199,7 +199,7 @@ func expanded_checks(game: Node3D, core: Node) -> void:
 	game.ranks.leech = 2
 	game.hp = 50
 	game._hit(enemy,1000)
-	check(game.hp == 52, "knockout restores health with Fighting spirit")
+	check(is_equal_approx(game.hp,50.7), "knockout restores health with Fighting spirit")
 	game._update_knockouts(2.0) # Recycle after the new visible fall completes.
 	var pooled_id: int = enemy.get_instance_id()
 	var recycled = game._spawn(Vector3(0,0,-1), "brute")

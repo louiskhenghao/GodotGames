@@ -68,7 +68,7 @@ func run():
 		var balance: int=core.save.data.coins
 		game.finish_run(true)
 		check(balance==core.save.data.coins,"result cannot pay twice: "+id)
-		if id=="ladder":check(visited.size()==5,"ladder traverses all five venues")
+		if id=="ladder":check(visited.size()==RushChallenges.ROUTE.size() and not visited.has(5),"ladder traverses all eight ordinary venues")
 	game.go_home()
 	game.stage=0
 	game.run_mode="survival30"

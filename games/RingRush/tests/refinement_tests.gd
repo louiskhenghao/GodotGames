@@ -32,9 +32,9 @@ func run():
  var fresh:=CoreSaveStore.new("user://refinement-test.json");fresh.load_profile()
  check(RushTraining.level(fresh,"footwork")==5,"permanent boosts survive reload")
  game.start_run()
- check(is_equal_approx(game.damage,35+RushAchievements.bonuses(store.data).power) and is_equal_approx(game.max_hp,160+RushAchievements.bonuses(store.data).health) and is_equal_approx(game.move_speed,5.16),"training changes actual combat stats")
+ check(is_equal_approx(game.damage,20.8+RushAchievements.bonuses(store.data).power) and is_equal_approx(game.max_hp,116.6+RushAchievements.bonuses(store.data).health) and is_equal_approx(game.move_speed,4.4075),"training changes actual combat stats")
  game.technique_id="barrage";game.technique()
- check(is_equal_approx(game.technique_clock,4.8*(1-RushAchievements.bonuses(store.data).cooldown)),"mastery reduces actual technique cooldown")
+ check(is_equal_approx(game.technique_clock,5.895*(1-RushAchievements.bonuses(store.data).cooldown)),"mastery reduces actual technique cooldown")
  for move in RushRoster.MOVES:
   game._clear_combat()
   game.player.position=Vector3.ZERO
@@ -63,7 +63,7 @@ func run():
  check(charger.rush_time>0,"charger telegraph releases a timed rush")
  game.invulnerable=0;hp=game.hp
  for i in 10:game._update_enemy(charger,.05)
- check(is_equal_approx(game.hp,hp-14*(1-game.rank_of("armor")*.1)*game.growth.enemy_damage*(1-game.growth.grit)),"charger swept collision hits once per rush")
+ check(is_equal_approx(game.hp,hp-14*(1-game.rank_of("armor")*.08)*game.growth.enemy_damage*(1-game.growth.grit)),"charger swept collision hits once per rush")
  var guard=game._spawn(Vector3(2,0,0),"guard")
  guard.health=100;game._hit(guard,20,true)
  check(is_equal_approx(guard.health,88),"guard armor mitigates normal punches")

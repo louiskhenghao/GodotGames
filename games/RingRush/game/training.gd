@@ -1,6 +1,6 @@
 class_name RushTraining
 extends RefCounted
-## Thirty levels per discipline. Early purchases retain their original benefits.
+## Small, linear permanent gains. Display and gameplay read the same bounded curve.
 const MAX_LEVEL:=30
 const RANKS:=["BRONZE","SILVER","GOLD","PLATINUM","DIAMOND","MASTER"]
 const COLORS:=[Color("dca47b"),Color("c7dbea"),Color("ffd275"),Color("8cf2d1"),Color("8cd9ff"),Color("d6a3ff")]
@@ -25,21 +25,20 @@ static func buy(store:CoreSaveStore,id:String) -> bool:
  return store.commit(next)
 static func value(fighter:Dictionary,id:String,rank:int) -> float:
  rank=clampi(rank,0,MAX_LEVEL)
- var first:=mini(5,rank);var extra:=maxi(0,rank-5)
  match id:
-  "power":return fighter.damage+first*3+extra*1.5
-  "health":return fighter.hp+first*10+extra*6
-  "charge":return minf(100,35+first*10+extra*.6)
-  "footwork":return fighter.speed*(1+first*.04+extra*.008)
-  "mastery":return (1-first*.04-extra*.008)*100
-  "grit":return rank*.6
-  "recovery":return rank*.3
-  "fortune":return rank
+  "power":return fighter.damage*(1+rank*.008)
+  "health":return fighter.hp*(1+rank*.012)
+  "charge":return 25+rank*.5
+  "footwork":return fighter.speed*(1+rank*.005)
+  "mastery":return 100-rank*.35
+  "grit":return rank*.2
+  "recovery":return rank*.12
+  "fortune":return rank*.5
  return 0
 static func display_value(fighter:Dictionary,id:String,rank:int) -> String:
  var amount:=value(fighter,id,rank)
  match id:
   "footwork":return "%.2f m/s"%amount
-  "charge","mastery","fortune":return "%d%%"%amount
+  "charge","mastery","fortune":return "%.1f%%"%amount
   "grit","recovery":return "%.1f%%"%amount
- return "%.0f"%amount
+ return "%.1f"%amount

@@ -9,6 +9,11 @@ var cursor := 0
 var ring_cursor := 0
 var text_cursor := 0
 var enabled := true
+var detail:=1
+var spectacle:CoreSpectaclePool
+var projectile_mesh:MultiMeshInstance3D
+var projectile_lives:=PackedFloat32Array()
+var projectile_cursor:=0
 var cracks: MultiMeshInstance3D
 var crack_life := 0.0
 var instanced: MultiMeshInstance3D
@@ -16,6 +21,8 @@ var strokes:Array[Dictionary]=[]
 var stroke_cursor:=0
 
 func _ready() -> void:
+	spectacle=CoreSpectaclePool.new()
+	add_child(spectacle)
 	instanced = MultiMeshInstance3D.new()
 	instanced.multimesh = MultiMesh.new()
 	instanced.multimesh.transform_format = MultiMesh.TRANSFORM_3D
@@ -26,6 +33,20 @@ func _ready() -> void:
 	material.vertex_color_use_as_albedo = true
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh.material = material
+	projectile_mesh=MultiMeshInstance3D.new()
+	projectile_mesh.multimesh=MultiMesh.new()
+	projectile_mesh.multimesh.transform_format=MultiMesh.TRANSFORM_3D
+	projectile_mesh.multimesh.use_colors=true
+	var projectile_shape:=SphereMesh.new();projectile_shape.radius=.5;projectile_shape.height=1
+	projectile_shape.radial_segments=8;projectile_shape.rings=4
+	projectile_shape.material=material
+	projectile_mesh.multimesh.mesh=projectile_shape
+	projectile_mesh.multimesh.instance_count=128
+	projectile_mesh.multimesh.custom_aabb=AABB(Vector3(-40,-8,-40),Vector3(80,32,80))
+	projectile_mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(projectile_mesh)
+	projectile_lives.resize(128)
+	for i in 128:projectile_mesh.multimesh.set_instance_transform(i,Transform3D(Basis.from_scale(Vector3.ZERO),Vector3.ZERO))
 	instanced.multimesh.mesh = mesh
 	instanced.multimesh.instance_count = capacity
 	instanced.multimesh.custom_aabb = AABB(Vector3(-40, -8, -40), Vector3(80, 32, 80))
@@ -39,7 +60,7 @@ func _ready() -> void:
 	crack_mesh.size = Vector3.ONE
 	crack_mesh.material = material
 	cracks.multimesh.mesh = crack_mesh
-	cracks.multimesh.instance_count = 48
+	cracks.multimesh.instance_count = 96
 	cracks.multimesh.custom_aabb = instanced.multimesh.custom_aabb
 	cracks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	cracks.visible = false
@@ -90,6 +111,10 @@ func _hide(index: int) -> void:
 	instanced.multimesh.set_instance_transform(index, Transform3D(Basis.IDENTITY, Vector3(0, -100, 0)))
 
 func clear() -> void:
+	spectacle.clear()
+	for i in 128:
+		projectile_lives[i]=0
+		projectile_mesh.multimesh.set_instance_transform(i,Transform3D(Basis.from_scale(Vector3.ZERO),Vector3.ZERO))
 	crack_life = 0
 	cracks.visible = false
 	for i in capacity:
@@ -149,6 +174,10 @@ func damage_number(at: Vector3, value: int, critical: bool = false) -> void:
 	p.life = 0.6
 
 func _process(delta: float) -> void:
+	for i in 128:
+		if projectile_lives[i]<=0:continue
+		projectile_lives[i]-=delta
+		if projectile_lives[i]<=0:projectile_mesh.multimesh.set_instance_transform(i,Transform3D(Basis.from_scale(Vector3.ZERO),Vector3.ZERO))
 	crack_life = maxf(0,crack_life-delta)
 	cracks.visible = crack_life > 0
 	for p in strokes:
@@ -178,22 +207,40 @@ func _process(delta: float) -> void:
 		p.node.visible = p.life > 0
 
 func quake(origin: Vector3, color: Color, radius: float = 4.5) -> void:
+	_fx().impact(origin,color,radius)
 	crack_life = 1.4
 	for ray in 8:
-		var previous := origin + Vector3.UP*.09
-		for segment in 6:
-			var angle := ray*TAU/8 + sin(segment*2.7+ray)*.12
-			var next := origin + Vector3(cos(angle),0,sin(angle)) * (segment+1)*radius/6 + Vector3.UP*.09
-			var direction := next-previous
-			var basis := Basis(Vector3.UP,atan2(-direction.x,-direction.z)).scaled(Vector3(.06,.012,direction.length()))
-			cracks.multimesh.set_instance_transform(ray*6+segment,Transform3D(basis,(previous+next)*.5))
-			cracks.multimesh.set_instance_color(ray*6+segment,color)
-			previous = next
+		var angle:float=ray*TAU/8+randf_range(-.15,.15)
+		var forward:=Vector3(cos(angle),0,sin(angle))
+		var side:=Vector3(-forward.z,0,forward.x)
+		var previous:=origin+Vector3.UP*.09
+		var branch:=previous
+		var distance:float=radius*randf_range(.80,1.07)
+		for segment in 4:
+			var next:Vector3=origin+forward*(segment+1)*distance/4+side*randf_range(-.25,.25)+Vector3.UP*.09
+			_crack(ray*4+segment,previous,next,color,.2-segment*.043)
+			if segment==1:branch=next
+			previous=next
+		var direction:=forward.rotated(Vector3.UP,randf_range(.55,.9)*(1 if ray%2 else -1))
+		for segment in 2:
+			var next:Vector3=branch+direction*radius*.19+side*randf_range(-.13,.13)
+			_crack(32+ray*2+segment,branch,next,color,.095-segment*.035)
+			branch=next
 	ring(origin,color,radius,.65,true)
 	ring(origin,Color("fff3b4"),radius*.7,.45,true)
 	burst(origin+Vector3.UP*.15,Color("c19b70"),48,1.6)
 
+func _crack(index:int,from:Vector3,to:Vector3,color:Color,width:float) -> void:
+	var direction:=to-from
+	var basis:=Basis(Vector3.UP,atan2(-direction.x,-direction.z))
+	var center:Vector3=(from+to)*.5
+	cracks.multimesh.set_instance_transform(index,Transform3D(basis.scaled_local(Vector3(width,.01,direction.length()+.035)),center))
+	cracks.multimesh.set_instance_color(index,Color("483c39"))
+	cracks.multimesh.set_instance_transform(48+index,Transform3D(basis.scaled_local(Vector3(width*.26,.014,direction.length()+.03)),center+Vector3.UP*.012))
+	cracks.multimesh.set_instance_color(48+index,color.lerp(Color("fff0a2"),.25))
+
 func cyclone(origin: Vector3, color: Color, radius: float = 2.8) -> void:
+	_fx().vortex(origin,color,radius)
 	for height in [.2,.8,1.4]:
 		var index := ring_cursor
 		ring(origin+Vector3.UP*height,color,radius,.36,true)
@@ -213,17 +260,19 @@ func stroke(from:Vector3,to:Vector3,color:Color,width:float=.10,duration:float=.
 	if direction.length_squared()<.00001:return
 	var p:=strokes[stroke_cursor]
 	stroke_cursor=(stroke_cursor+1)%strokes.size()
-	p.node.transform=Transform3D(Basis.looking_at(direction,Vector3.RIGHT if absf(direction.normalized().y)>.95 else Vector3.UP).scaled(Vector3(width,width,direction.length())),(from+to)*.5)
+	p.node.transform=Transform3D(Basis.looking_at(direction,Vector3.RIGHT if absf(direction.normalized().y)>.95 else Vector3.UP).scaled_local(Vector3(width,width,direction.length())),(from+to)*.5)
 	p.node.material_override.albedo_color=color
 	p.node.visible=true
 	p.life=duration
 
 func lightning(from:Vector3,to:Vector3,color:Color) -> void:
+	_fx().flash(to,color,.85)
 	var previous:=from
 	for i in 6:
 		var next:=from.lerp(to,(i+1)/6.0)
 		if i<5:next+=Vector3(sin(i*2.5)*.22,cos(i*2.1)*.12,0)
-		stroke(previous,next,color,.09,.32)
+		stroke(previous,next,color,.17,.28)
+		stroke(previous,next,Color("edfcff"),.045,.32)
 		previous=next
 
 func strike(origin:Vector3,direction:Vector3,color:Color) -> void:
@@ -238,3 +287,35 @@ func wall_impact(at:Vector3,color:Color) -> void:
 		var delta:=Vector3(cos(i*TAU/6),sin(i*TAU/6),.15)*.9
 		stroke(at,at+delta,color,.10,.3)
 	burst(at,color,18,1.1)
+
+func _fx() -> CoreSpectaclePool:
+	spectacle.enabled=enabled
+	spectacle.detail=detail
+	return spectacle
+
+func hit_flash(at:Vector3,color:Color) -> void:
+	_fx().flash(at,color,.55)
+
+func muzzle(at:Vector3,color:Color,size:float=.6) -> void:
+	_fx().flash(at,color,size)
+
+func explosion(at:Vector3,color:Color,radius:float) -> void:
+	_fx().impact(Vector3(at.x,0,at.z),color,radius,.45)
+	ring(Vector3(at.x,0,at.z),color,radius,.38,true)
+
+func projectile(at:Vector3,direction:Vector3,color:Color,kind:String,radius:float,trail:bool=true) -> void:
+	# Always visible, including with decorative effects disabled. Gameplay owns hit radius.
+	var length:=.65 if kind=="bullet" else .5
+	var basis:=Basis.looking_at(direction,Vector3.RIGHT if absf(direction.y)>.95 else Vector3.UP).scaled_local(Vector3(radius*1.1,radius*1.1,length))
+	projectile_mesh.multimesh.set_instance_transform(projectile_cursor,Transform3D(basis,at-direction*length*.35))
+	projectile_mesh.multimesh.set_instance_color(projectile_cursor,color)
+	projectile_lives[projectile_cursor]=.055
+	projectile_cursor=(projectile_cursor+1)%128
+	if not trail:return
+	_fx().flash(at,color,radius*1.8)
+	if kind in ["missile","orb"]:_fx().smoke(at-direction*.3,Color("a99a9b"),.18)
+
+func flame_jet(at:Vector3,direction:Vector3,length:float,color:Color) -> void:
+	_fx().flame(at,direction,length,color)
+	for side in [-1,0,1]:
+		stroke(at,at+direction*length+Vector3(direction.z,0,-direction.x)*side*.32,color,.065,.16)

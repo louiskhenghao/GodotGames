@@ -119,14 +119,17 @@ func _ready() -> void:
 	venues.append(self)
 	_build_venues()
 	_build_rift()
+	for stage_id in range(6,RushBalance.STAGES.size()):
+		var venue:=RushFrontierVenues.build(self,stage_id)
+		venues.append(venue)
 	_build_showcase()
 	showcase.visible=false
 
 func set_stage(index: int) -> void:
-	current_stage = clampi(index,0,5)
+	current_stage = clampi(index,0,venues.size()-1)
 	for node in ring_nodes: node.visible = current_stage == 0 and not in_showroom
 	for i in range(1,venues.size()): venues[i].visible = i == current_stage and not in_showroom
-	key_light.light_color = [Color("ffe7c0"),Color("cbbfff"),Color("b9daff"),Color("ffcc9e"),Color("ffe4b6"),Color("cec5ff")][current_stage]
+	key_light.light_color = [Color("ffe7c0"),Color("cbbfff"),Color("b9daff"),Color("ffcc9e"),Color("ffe4b6"),Color("cec5ff"),Color("fff4cf"),Color("b8e6df"),Color("bddcff")][current_stage]
 	set_quality(MobileCore.save.data.settings.get("low_quality",false))
 
 func set_quality(low: bool) -> void:

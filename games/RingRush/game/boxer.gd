@@ -5,6 +5,7 @@ var max_health := 24.0
 var speed := 1.8
 var attack_timer := 0.0
 var windup := 0.0
+var encounter:RushBossCombat
 var burn := 0.0
 var burn_damage := 0.0
 var frost := 0.0
@@ -22,8 +23,11 @@ var hit_time := 0.0
 var hero := false
 var gold := false
 var role := "rookie"
+var boss_appearance:=""
 var alternate := false
 var active := false
+var generation:=0
+var creature_model:RushCreatureModel
 var dying:=false
 var death_clock:=0.0
 var death_push:=Vector3.ZERO
@@ -72,6 +76,7 @@ var rush_direction:=Vector3.ZERO
 var rush_hit:=false
 var skeleton: Skeleton3D
 var animator: AnimationPlayer
+var layered_animation:RushFighterAnimation
 var skin_mesh: MeshInstance3D
 var outfit: MeshInstance3D
 var gloves: Array[MeshInstance3D] = []
@@ -97,6 +102,10 @@ func build(is_hero: bool, elite: bool = false) -> void:
 		body=Node3D.new()
 		body.rotation.y=PI
 		add_child(body)
+		creature_model=RushCreatureModel.new()
+		body.add_child(creature_model)
+		creature_model.visible=false
+		RushCreatureModel.prewarm()
 		crowd_mesh=MeshInstance3D.new()
 		body.add_child(crowd_mesh)
 		crowd_mesh.mesh=crowd_poses.clips.Idle[0]
@@ -152,7 +161,8 @@ static func clothing(source: Mesh, shirt: bool, style_id: String = "") -> ArrayM
 	outfits[key] = mesh
 	return mesh
 
-func configure(kind: String, creature_boss:bool=false) -> void:
+func configure(kind: String, creature_boss:bool=false, appearance:String="") -> void:
+	generation+=1
 	dying=false
 	death_clock=0
 	flash_time=0
@@ -161,10 +171,17 @@ func configure(kind: String, creature_boss:bool=false) -> void:
 	body.rotation=Vector3(0,PI,0)
 	if crowd_mesh!=null:_set_crowd_alpha(1.0)
 	role = kind
+	boss_appearance=appearance if kind=="boss" else ""
+	if not hero:
+		creature_model.visible=is_nonhuman()
+		crowd_mesh.visible=not is_nonhuman()
+		if is_nonhuman():
+			creature_model.configure(boss_appearance if not boss_appearance.is_empty() else kind)
+			creature_model.animate(0,false,0)
 	attack_target=Vector3.ZERO
 	rush_time=0
 	rush_hit=false
-	if not hero:
+	if not hero and not is_nonhuman():
 		var variant:String="raven" if kind in ["runner","spark"] else ("titan" if kind in ["brute","boss","charger","guard"] else "atlas")
 		if kind=="boss" and creature_boss:variant="hex"
 		variant={"bone":"rattle","revenant":"shade","hexer":"hex"}.get(kind,variant)
@@ -186,8 +203,11 @@ func configure(kind: String, creature_boss:bool=false) -> void:
 		glove.material_override = material(Color("e9b741") if gold and hero else tint)
 		glove.material_override.roughness = .42
 	scale = Vector3.ONE * {"hero":1.10,"rookie":1.0,"runner":.94,"brute":1.18,"boss":1.42,"charger":1.12,"spark":.96,"guard":1.16}.get(role,1.0)
+	if not boss_appearance.is_empty():scale=Vector3.ONE*1.9
 	if hero and character_id == "titan": scale *= Vector3(1.15,1.07,1.1)
 	if hero and character_id == "zephyr": scale *= Vector3(.92,1,.92)
+	encounter=RushBossCombat.new() if role=="boss" else null
+	warning.material_override.albedo_color=Color("ff604f")
 	attack_timer = .7
 	windup = 0
 	burn = 0
@@ -216,6 +236,8 @@ func set_character(id: String) -> void:
 	if not authoring_creature:id=RushRoster.character(id).id
 	if character_id != id:
 		character_id = id
+		if is_instance_valid(layered_animation):
+			remove_child(layered_animation);layered_animation.queue_free();layered_animation=null
 		remove_child(body)
 		body.queue_free()
 		gloves.clear();mech_arms.clear();mech_fists.clear()
@@ -234,10 +256,13 @@ func animate(delta: float, moving: bool) -> void:
 	launch_time = maxf(0,launch_time-delta)
 	body.position.y = sin(launch_time / .65 * PI) * .9 if launch_time > 0 else 0.0
 	body.rotation.y = PI + (spin_time * 18 if spin_time > 0 else 0)
+	if is_nonhuman():
+		creature_model.animate(phase,moving,hit_time,punch_time)
+		return
 	var clip := "Punch_Cross" if alternate else "Punch_Jab"
 	if hit_time > 0 and punch_time <= 0: clip = "Hit_Chest"
 	elif punch_time <= 0: clip = "Jog_Fwd" if moving else "Idle"
-	if hero and slam_time>0: clip="Jump_Land"
+	if hero and slam_time>0: clip="Punch_Cross"
 	if not hero:
 		if crowd_clip != clip: crowd_clip=clip; crowd_time=0
 		crowd_time += delta*(1.7 if punch_time>0 else 1.0)
@@ -246,6 +271,10 @@ func animate(delta: float, moving: bool) -> void:
 		var frame := mini(frames.size()-1,int(fmod(crowd_time,duration)/duration*frames.size()))
 		crowd_mesh.mesh=frames[frame]
 		return
+	if layered_animation==null:
+		layered_animation=RushFighterAnimation.new();add_child(layered_animation);layered_animation.setup(animator)
+		if punch_time>0:layered_animation.punch(alternate)
+	layered_animation.pose(delta,moving)
 	if is_mech():
 		var head_pose:Transform3D=body.global_transform.affine_inverse()*skeleton.global_transform*skeleton.get_bone_global_pose(skeleton.find_bone("Head"))
 		mech_head.position=head_pose.origin+Vector3.UP*.12
@@ -253,9 +282,7 @@ func animate(delta: float, moving: bool) -> void:
 			var strike:float=sin(clampf(punch_time/.34,0,1)*PI) if (alternate and i==0) or (not alternate and i==1) else 0.0
 			mech_arms[i].rotation.x=-.15-strike*.55+(sin(phase*8+i*PI)*.18 if moving else 0)
 			mech_fists[i].position.z=.20+strike*.55
-	if animator.current_animation != clip:
-		animator.play(clip,.10,1.7 if punch_time > 0 else 1.0)
-	animator.advance(delta)
+
 
 func face(direction: Vector3) -> void:
 	if direction.length_squared() > .001: rotation.y = atan2(-direction.x,-direction.z)
@@ -263,7 +290,8 @@ func face(direction: Vector3) -> void:
 func punch() -> void:
 	alternate = not alternate
 	punch_time = .34
-	if hero: animator.play("Punch_Cross" if alternate else "Punch_Jab",.06,1.7)
+	if hero and is_instance_valid(layered_animation):layered_animation.punch(alternate)
+	elif hero:animator.play("Punch_Cross" if alternate else "Punch_Jab",.06,1.7)
 
 func set_gold(enabled: bool) -> void:
 	gold = enabled
@@ -291,6 +319,7 @@ func _build_hero() -> void:
 		outfit=skin_mesh
 		_build_mech_arms()
 		_build_mech_head()
+		_build_mech_weapon()
 		return
 	if is_creature():
 		for mesh:MeshInstance3D in body.find_children("*","MeshInstance3D",true,false):
@@ -317,7 +346,8 @@ func _build_hero() -> void:
 func hurt(flash:bool=true) -> void:
 	hit_time=.23
 	punch_time=0
-	if hero:animator.play("Hit_Chest",.045)
+	if hero and is_instance_valid(layered_animation):layered_animation.hurt()
+	elif hero:animator.play("Hit_Chest",.045)
 	else:crowd_clip=""
 	if not flash:return
 	if flash_material==null:
@@ -329,8 +359,10 @@ func hurt(flash:bool=true) -> void:
 	flash_time=.10
 	_flash_target().material_overlay=flash_material
 
+func is_nonhuman() -> bool:return not hero and (role in RushCreatureModel.TYPES or not boss_appearance.is_empty())
+
 func _flash_target() -> MeshInstance3D:
-	return skin_mesh if hero else crowd_mesh
+	return creature_model.shell if is_nonhuman() else (skin_mesh if hero else crowd_mesh)
 
 func begin_defeat(direction:Vector3) -> void:
 	active=false
@@ -351,8 +383,11 @@ func animate_defeat(delta:float,stage:int) -> bool:
 	if not dying:return true
 	death_clock+=delta
 	position=RushArenaLayout.move(position,death_push*exp(-death_clock*7)*delta,stage,.35)
-	var frames:Array=crowd_poses.clips.Death01
-	crowd_mesh.mesh=frames[mini(frames.size()-1,int(clampf(death_clock/.72,0,1)*(frames.size()-1)))]
+	if is_nonhuman():
+		creature_model.death_pose(death_clock)
+	else:
+		var frames:Array=crowd_poses.clips.Death01
+		crowd_mesh.mesh=frames[mini(frames.size()-1,int(clampf(death_clock/.72,0,1)*(frames.size()-1)))]
 	_set_crowd_alpha(1-clampf((death_clock-1.10)/.35,0,1))
 	if death_clock>=1.45:
 		finish_defeat()
@@ -368,6 +403,9 @@ func finish_defeat() -> void:
 		crowd_mesh.material_overlay=null
 
 func _set_crowd_alpha(alpha:float) -> void:
+	if is_nonhuman():
+		creature_model.set_alpha(alpha)
+		return
 	# GeometryInstance3D.transparency is ignored by Compatibility/Mobile.
 	# Fade each actor's existing materials; restore opaque rendering on reuse.
 	if crowd_mesh==null:return
@@ -411,3 +449,25 @@ func _build_mech_head() -> void:
 	var model:=MeshInstance3D.new();model.mesh=RushModelFactory.bake(pieces,12);mech_head.add_child(model)
 	var pose:Transform3D=body.global_transform.affine_inverse()*skeleton.global_transform*skeleton.get_bone_global_pose(skeleton.find_bone("Head"))
 	mech_head.position=pose.origin+Vector3.UP*.12
+
+func _build_mech_weapon() -> void:
+	var parts:Array=[]
+	var steel:=Color("344255")
+	var light:Color=RushRoster.character(character_id).color
+	if character_id=="aegis":
+		parts.append(RushModelFactory.piece("box",Vector3(.34,.32,.4),Vector3(.48,1.13,.4),steel))
+		for i in 6:
+			var p:=RushModelFactory.piece("cylinder",Vector3(.075,.72,.075),Vector3(.48+cos(i*TAU/6)*.11,1.13+sin(i*TAU/6)*.11,.75),Color("768590"))
+			p.rotation=Vector3(PI/2,0,0);parts.append(p)
+	elif character_id=="ion":
+		for side in [-1,1]:
+			parts.append(RushModelFactory.piece("box",Vector3(.4,.46,.5),Vector3(side*.5,1.47,-.05),steel))
+			for i in 3:parts.append(RushModelFactory.piece("sphere",Vector3(.11,.11,.16),Vector3(side*.5,1.32+i*.13,.23),light))
+	else:
+		for side in [-1,1]:
+			parts.append(RushModelFactory.piece("cylinder",Vector3(.25,.63,.25),Vector3(side*.25,1.1,-.45),Color("8b4c51")))
+			var p:=RushModelFactory.piece("cylinder",Vector3(.18,.5,.18),Vector3(side*.46,1.05,.63),steel)
+			p.rotation=Vector3(PI/2,0,0);parts.append(p)
+			parts.append(RushModelFactory.piece("sphere",Vector3(.14,.14,.12),Vector3(side*.46,1.05,.91),Color("ffb14d")))
+	var model:=MeshInstance3D.new();model.name="RangedWeapon"
+	model.mesh=RushModelFactory.bake(parts,10);body.add_child(model)

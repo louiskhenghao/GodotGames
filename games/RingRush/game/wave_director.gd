@@ -8,7 +8,7 @@ const MODES := [
  {"id":"onslaught50","name":"ONSLAUGHT 50","waves":50,"icon":"flurry","detail":"50 waves · A long endurance fight"},
  {"id":"hell","name":"HELL MODE","waves":20,"icon":"skull","detail":"20 dense waves · No normal-wave healing"},
  {"id":"bossrush","name":"BOSS RUSH","waves":5,"icon":"crown","detail":"5 bosses · Dodge rushes, circles and slams"},
- {"id":"ladder","name":"WORLD LADDER","waves":25,"icon":"stairs","detail":"5 venues · 5 waves in each"},
+ {"id":"ladder","name":"WORLD LADDER","waves":40,"icon":"stairs","detail":"8 venues · 5 waves in each"},
  {"id":"classic","name":"90 SEC RUSH","waves":6,"icon":"timer","detail":"90 seconds · Beat the champion"},
  {"id":"rift","name":"THE RIFT","waves":12,"icon":"skull","detail":"12 waves · A secret creature encounter"}
 ]

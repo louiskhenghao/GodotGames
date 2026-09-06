@@ -67,3 +67,25 @@ Unsupported adapters return `ERR_UNAVAILABLE`; denied permissions return `ERR_UN
 Ring Rush's `games/RingRush/game/bootstrap.gd` owns its 1,200-coin playtest gift and retired-fighter migration. `games/RingRush/game/challenges.gd` owns the secret arena gate. `games/RingRush/game/music.gd` owns the soundtrack catalog. The host HUD renders notice events and chooses its own colors/icons.
 
 `packages/mobile-core/tests/services_tests.gd` validates failed-save atomicity, duplicate unlocks, notification permission/availability rules, cue changes and cue behavior. A generated project was separately imported and started with no Ring Rush assets or code. Use `templates/core_starter/` as the minimal integration example.
+
+## Reusable real-time effects
+
+`CoreImpactPool` is the public facade. Its child `CoreSpectaclePool` batches debris, soft clouds, light flares and ground waves into four fixed MultiMeshes; essential projectile bodies have a separate 128-instance batch. The host owns projectile movement, collisions, damage and warning timing. No RingRush assets or classes are imported by these effects.
+
+```gdscript
+var fx := CoreImpactPool.new()
+add_child(fx)
+fx.detail = 0 # 0: fewer decorative emissions; 1: normal
+fx.quake(Vector3.ZERO, Color("ffc04d"), 4.6)
+fx.explosion(Vector3(2, 0, 0), Color("e597f3"), 2.3)
+fx.flame_jet(Vector3(0, 1, 0), Vector3.FORWARD, 4.0, Color("ff9e4d"))
+fx.projectile(position, direction, color, "missile", 0.32)
+# On scene exit, replay restart or loaded snapshot:
+fx.clear()
+```
+
+`enabled = false` disables optional debris/clouds/flashes. Essential `projectile`, `stroke`, and `ring(..., true)` calls remain visible. Call `clear()` when switching effects off to remove existing decorations. The host should call `projectile` each simulation frame for every visible shot; the `trail` argument lets it throttle decorative trails independently.
+
+Fixed capacities: 96 rocks, 64 clouds/flame puffs, 64 flares, 12 ground waves, 128 projectile markers; legacy pools retain 192 sparks, 48 line strokes, 12 rings and 16 damage labels. Saturated decoration pools recycle their oldest slot. This renderer deliberately avoids lights per projectile, screen-reading shaders and runtime physics debris. Cracks are temporary geometry above the floor, not permanent terrain destruction.
+
+Instance color and custom shader data follow the [Godot MultiMesh interface](https://docs.godotengine.org/en/4.5/classes/class_multimesh.html). Native Compatibility and WebGL 2 are validated for RingRush; mobile device thermal/GPU validation remains a host release task.

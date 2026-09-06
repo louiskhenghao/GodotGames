@@ -3,7 +3,9 @@ extends Control
 var stage:=0
 func _draw() -> void:
 	var poly:=RushArenaLayout.polygon(stage)
-	var factor:=minf(size.x/20,size.y/20)
+	var extent:=Vector2.ONE
+	for p in poly:extent=extent.max(p.abs())
+	var factor:=minf((size.x-16)/(extent.x*2),(size.y-16)/(extent.y*2))
 	var display:=PackedVector2Array()
 	for p in poly:display.append(size*.5+p*factor)
 	draw_colored_polygon(display,Color("1b343e"))

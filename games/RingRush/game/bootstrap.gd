@@ -7,7 +7,9 @@ static func prepare(store:CoreSaveStore) -> bool:
   if not store.grant("playtest-welcome-v1",1200):return false
  if not migrate(store):return false
  var next:=store.data.duplicate(true)
- var changed:=false
+ var changed:bool=not next.progress.has("badge_tiers")
+ if int(next.progress.get("wins_4",0))>0 and int(next.progress.get("unlocked_stage",0))<6:
+  next.progress.unlocked_stage=6;changed=true
  var state=next.progress.get("pending_run",{}).get("state",{})
  if state is Dictionary and state.get("version")==1 and not state.has("growth"):
   state.growth=RushGrowth.legacy(store);changed=true

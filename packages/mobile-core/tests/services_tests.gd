@@ -44,6 +44,14 @@ func run():
  check(music.play_cue("one") and music.current_cue=="one","shared player selects injected cue")
  check(not music.play_cue("missing") and music.current_cue=="one","unknown cue does not interrupt current music")
  check(music.play_cue("two") and music.volume_db==-80,"cue changes preserve mute setting")
+ var effects:=CoreImpactPool.new();root.add_child(effects)
+ effects.quake(Vector3.ZERO,Color.ORANGE,4)
+ check(effects.spectacle.groups.rock.slots.any(func(p):return p.life>0),"standalone impact renderer loads without host resources")
+ for i in 100:effects.projectile(Vector3(i*.1,1,0),Vector3.FORWARD,Color.RED,"enemy",.3,false)
+ check(Array(effects.projectile_lives).filter(func(life):return life>0).size()==100,"essential projectiles have a pool independent from decorative strokes")
+ effects.clear()
+ check(Array(effects.projectile_lives).all(func(life):return life==0),"standalone renderer clears essential projectile bodies")
+ effects.queue_free()
  music.stop();music.stream=null;music.cues.clear();tone=null;music.queue_free();notices.queue_free();service.queue_free()
  await process_frame;await create_timer(.25).timeout
  for path in ["user://core-services-test.json"]:

@@ -1,5 +1,5 @@
 {
-  "removed_bytes": 466605136,
+  "removed_bytes": 834316669,
   "removed": [
     {
       "path": "games/RingRush/assets/fighters/custom",
@@ -892,6 +892,30 @@
     {
       "path": "games/RingRush/assets/music_street.ogg.import",
       "bytes": 397
+    },
+    {
+      "path": "builds/web",
+      "bytes": 124717674
+    },
+    {
+      "path": "builds/mac",
+      "bytes": 148334140
+    },
+    {
+      "path": "builds/RingRush-Web-Playtest.zip",
+      "bytes": 94632405
+    },
+    {
+      "path": "builds/MobileCore-Starter.zip",
+      "bytes": 22548
+    },
+    {
+      "path": "builds/PLAYTEST.md",
+      "bytes": 4591
+    },
+    {
+      "path": "builds/SHA256SUMS.txt",
+      "bytes": 175
     }
   ]
 }

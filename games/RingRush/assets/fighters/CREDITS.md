@@ -44,3 +44,17 @@ The mode music supersedes the earlier shared tempo variants. `tools/generate_mod
 AEGIS, ION and ONYX use three different chassis from **Ultimate Space Kit**, by **Quaternius**, CC0 1.0. Author/license: https://quaternius.com/packs/ultimatespacekit.html . Download mirror: https://opengameart.org/node/155017 (`ultimate_space_kit-glb.zip`). Original files: `Mech-D5wW2jDO42.glb`, `Mech-o3Ps8z8ByP.glb`, `Mech-4UvIHxnoSR.glb`.
 
 The game adaptation removes the original animal pilot head triangles, adds original mechanical helmets and articulated boxing arms, normalizes scale, and maps seven native animations to the combat interface. These are three different chassis meshes (4,008 / 5,846 / 6,756 source triangles), not recolors of the existing boxer. `tools/prepare_mechs.gd` reproduces the scene adaptation; runtime gloves and helmets are authored in `game/boxer.gd`. Unused source-pack assets were removed; the three selected source GLBs remain for reproducible preparation and are excluded from exports.
+
+## Open creatures and companions (0.7.0)
+
+The four 0.6 procedural enemy meshes were replaced by selected **Quaternius CC0** models:
+
+| Pack | Original models | Runtime uses |
+| --- | --- | --- |
+| [Cyberpunk Game Kit](https://quaternius.com/packs/cyberpunkgamekit.html) | Enemy_Flying_Gun, Enemy_Flying | Enemy gun drone, Sky Scout, Medic Drone |
+| [Ultimate Monsters](https://quaternius.com/packs/ultimatemonsters.html) | GreenSpikyBlob, Ghost, Armabee | Spitter, wisp, Arc Bee |
+| [Ultimate Animated Animals](https://quaternius.com/packs/ultimateanimatedanimals.html) | Wolf, Fox, ShibaInu | Hound enemy, Trail Wolf, Swift Fox, Rescue Shiba |
+
+`assets/creatures/sources.json` records the original filenames, author, official pack pages, selected download URLs and SHA-256 hashes. Original author notices are preserved unmodified in `assets/creatures/*-LICENSE.txt`. The Monsters download notice uses the title “Ultimate Platformer Pack”; the linked official Ultimate Monsters page independently declares the selected pack CC0. These are adapted assets: native animations are sampled into shared 54-pose resources, scale normalized and materials sampled into vertex colors. No complete asset pack or unused source files are bundled. `tools/fetch_open_models.py` and `tools/prepare_open_models.gd` reproduce the adaptation.
+
+Robot barrels, missile pods and flame tanks remain original game geometry in `game/boxer.gd`. Weapon sounds are original synthesis reproducible with `tools/generate_weapon_audio.py`. Credits and license text are accessible from the bottom of Settings and included in the Web and Mac archives.

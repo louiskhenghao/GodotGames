@@ -11,6 +11,10 @@ def package():
   'LICENSES/Model-Credits.md':ROOT/'assets/fighters/CREDITS.md',
   'LICENSES/KayKit-CC0.txt':ROOT/'assets/fighters/kaykit/LICENSE.txt',
   'LICENSES/Barlow-OFL.txt':ROOT/'assets/fonts/OFL-BarlowCondensed.txt',
+  'LICENSES/Monsters-CC0.txt':ROOT/'assets/creatures/Monsters-LICENSE.txt',
+  'LICENSES/Animals-CC0.txt':ROOT/'assets/creatures/Animals-LICENSE.txt',
+  'LICENSES/Cyberpunk-CC0.txt':ROOT/'assets/creatures/Cyberpunk-LICENSE.txt',
+  'LICENSES/Selected-Model-Sources.json':ROOT/'assets/creatures/sources.json',
   'LICENSES/Godot-LICENSE.txt':ROOT/'assets/licenses/Godot-LICENSE.txt',
   'LICENSES/Godot-COPYRIGHT.txt':ROOT/'assets/licenses/Godot-COPYRIGHT.txt',
  }

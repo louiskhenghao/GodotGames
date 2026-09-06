@@ -108,3 +108,44 @@ Universal Mac 0.4.0 was extracted and launched from `/private/tmp` with CoreAudi
 The final Mac archive was also launched through an external SceneTree harness that loads the archive's own main scene and triggers the normal close path. It printed `EXPORTED 0.4.0 READY / NORMAL CLOSE` and exited without warnings or errors. The harness is outside the repository and does not depend on source assets.
 
 Final exported WebGL smoke test used an independent HTTP origin on port 8771. A simulated 4,000-coin pack changed 1,200 → 5,200; AEGIS unlocked/equipped for 1,800; Quake upgraded to level 2 for 182; Power upgraded for 80. The page showed two automatically earned badges and +0.4 permanent power. TRY EFFECT entered the arena and the header Back returned to Skills. Reload retained the training/badges. No browser warning/error logs were captured. The user-facing test page remains open; it uses a separate save origin from earlier port-8769 playtests.
+
+## 0.5.0 — monorepo and Boss combat (2026-09-06)
+
+Canonical game path is now `games/RingRush`, with reusable source in `packages/mobile-core/addon`. Workspace sync/import/test/export passed before combat changes began. Core tests run in an independent generated project with no RingRush assets.
+
+- Godot: **876 checks**, zero failures: 18 standalone core + 65 Boss + 7 migration + 84 expansion + 83 flow + 178 growth + 72 playtest + 45 native quality + 124 refinement + 65 baseline + 3 shutdown + 132 UX/ads.
+- Python workspace tooling: **4 tests**, zero failures. Sync refuses local edits and read-only checks do not create files.
+- The Boss suite verifies all six actual skill damage paths, bounded energy/cooldown rewards, full-combo interruption, precision dodge, exactly-once 2.5x counter, swept charge collision, locked impacts, viewport bounds and serialized/legacy saves.
+- Native captures at 320×568, 540×960 and 768×1024 confirm high-contrast Boss feedback, gold ground warning and skill affordance. Captures live in ignored `docs/boss-preview/`; regeneration is in `tests/boss_capture.gd`.
+- Native performance sample: M5 Max, Compatibility, 540×960, 48 enemies including a phase-II Boss, ONYX and level-10 skill effects: median 7.002 ms, p95 13.388 ms, 392 draw calls, 612,672 primitives, 481 nodes. This is a desktop stress sample, not a mobile performance claim; see `boss-performance.json`.
+
+The new Boss state is optional in version-1 run snapshots. Resume preserves phase/pattern position and resets transient warnings/reward windows. No account/profile reset or Git history rewrite is part of the migration.
+
+Release verification: 0.5.0 Web loaded in the in-app browser, entered Boss Rush, reached phase II with the new cue, accepted a skill input, paused, reloaded and restored the fight safely; browser warning/error log was empty. The exported universal Mac app ran from a separate temporary directory and verified phase II, a successful skill break and a serialized snapshot, then closed normally with no errors. Packages include instructions/licenses and passed ZIP integrity checks.
+
+## Ranged combat and VFX — 0.6.0 (2026-09-06)
+
+See [ranged-combat.md](ranged-combat.md) for behavior, limits, checks and the desktop stress measurement. Four original procedural creature models, robot weapon attachments and short synthesized sounds add no external model pack. Shared VFX remain isolated in `packages/mobile-core/addon/vfx`.
+
+The final eight-skill page uses a bounded scroll region above fixed actions, with smaller cards. Three viewport checks prevent content/actions overlapping. Game tests: 975 checks; standalone core: 21; native UI: three additional rendering checks beyond headless coverage. Four workspace Python checks also pass.
+
+
+## 0.7.0 — 2026-09-06
+
+- 1,205 game checks across 13 suites passed, including 200 longevity checks. The 21 standalone mobile-core checks and four workspace Python tests passed separately.
+- Longevity suite also passed using the native Compatibility renderer, including six lower-body bones preserving locomotion under punches while the upper-body pose changes. 320×568, 540×960 and 768×1024 equipment layouts were exercised.
+- Actual Web export loaded at isolated QA origin 8772. Verified companion coin debit (1200→550), separate Equip action, old run restore, combat/Q, pause, Settings version 0.7.0/build7 and Credits. Captured browser console had no warnings/errors during this smoke run.
+- Actual exported Mac app passed model, companion, ranged passive, Boss phase II/break, ultimate, JSON snapshot, layered animation and packed license checks, then exited normally. It is an ad-hoc-signed playtest, not a notarized production app.
+- Native 540×960 short stress sample on Apple M5 Max: 48 enemies, two companions, Onyx, Boss phase II, five ranged passives and overlapping skill effects. Median 7.027ms, P95 14.027ms, 333 draw calls, 552,342 primitives, approximately 153.2MiB reported video memory. See `longevity-performance.json`. No mobile frame-rate or thermal claim is made from this desktop sample.
+- Production strict preflight intentionally fails: no published policy URL, example mobile IDs, missing production signing/SDK setup and device/store validation. These are documented in repository root `docs/tutorials/production.md`.
+- New model sources and original licenses included in both friend archives. Open-model resources are shared pose bakes; no whole third-party asset pack added. No user Downloads assets or preexisting source changes were removed.
+
+## 0.8.0 — 2026-09-06
+
+- 14 game suites: 1,507 checks, zero failures (full suite plus the final six biome-boss assertions). `worlds_tests.gd`: 294 checks; its initial 288 checks also passed with native rendering. Four workspace Python tests passed; canonical package mounts are current. No shared-core implementation changed for this update.
+- `worlds_capture.gd` captured the home/loadout UI at 320×568, 540×960 and 768×1024, independent scrolling, empty slots, and all three new venues both in the selector and combat. The equipped preview remains above the independently clipped catalog.
+- Actual Web export tested on separate QA origin 8772 using the pre-existing QA save: home progression links, fixed equipped Sky Scout, independent scrolling, Ground filter, Trail Wolf purchase (550→100), Equip updating the fixed card immediately, and Settings version 0.8.0 / Build 8. Browser warning/error logs were empty. The user's 8771 profile was not used for these checks.
+- Extracted and ran the actual exported Mac application. Verified packed assets/licenses, companion economy, all creature animation libraries, new stage models, each biome boss entering phase II and accepting a guard break, snapshots, ranged passives, independent ultimate, layered walking attacks, loadout page and clean shutdown. The package is ad-hoc signed, not notarized.
+- Native forest stress test: M5 Max, OpenGL Compatibility, 540×960, 48 venue-appropriate enemies including phase-II Alpha, Onyx, five ranged passive upgrades and two companions. Median 6.899 ms / p95 7.244 ms over 180 sampled frames; 243 draw calls, 512,412 primitives, 604 nodes, 139.2 MiB reported VRAM. Full metrics: `worlds-performance.json`. This is a short desktop sample, not Android/iOS performance certification.
+- ZIP integrity checks passed. Mac 162.3 MiB, SHA-256 `fbca36aa82d823e2973388a1a86549e0408bc482e4814700cd5808040961fb6e`; Web 111.0 MiB, SHA-256 `347a9e67ed37ec297d664bbe902fe8e0075e867ef6ec75568d23a88a15cdc0f9`. No new asset pack was added; the two biome roles reuse previously attributed CC0 models.
+- Production blockers remain as documented in `docs/tutorials/production.md`: real commerce SDKs, published privacy policy, native IDs/signing and physical-device QA are not completed by this playtest release.

@@ -37,7 +37,7 @@ func run():
 	for m in RushRoster.MOVES:
 		colors[RushRoster.visual(m.id).color]=true
 		icons[RushRoster.visual(m.id).icon]=true
-	check(colors.size()==6 and icons.size()==6,"all six skills have distinct icons and semantic colors")
+	check(colors.size()==RushRoster.MOVES.size() and icons.size()==RushRoster.MOVES.size(),"all skills have distinct icons and semantic colors")
 	game.go_home()
 	game.start_run()
 	await process_frame

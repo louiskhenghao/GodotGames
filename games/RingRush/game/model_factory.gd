@@ -16,9 +16,9 @@ static func bake(parts: Array, detail: int = 12) -> ArrayMesh:
 		if part.shape == "box":
 			primitive = BoxMesh.new()
 			primitive.size = Vector3.ONE
-		elif part.shape=="cylinder":
+		elif part.shape in ["cylinder","cone"]:
 			primitive=CylinderMesh.new()
-			primitive.top_radius=.5
+			primitive.top_radius=0 if part.shape=="cone" else .5
 			primitive.bottom_radius=.5
 			primitive.height=1
 			primitive.radial_segments=detail
