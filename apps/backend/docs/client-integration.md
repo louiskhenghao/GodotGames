@@ -1,5 +1,7 @@
 # Game client integration
 
+**RingRush 0.9.0 now connects login and cloud saves through `packages/mobile-core/addon/cloud/`.** See [game setup](../../../docs/tutorials/cloud-saves.md) and its account screen for configuration and offline behavior. Native billing callbacks remain a separate integration.
+
 Base URL below is your deployed HTTPS API. All `/v1/games/{gameId}` calls require `Authorization: Bearer <accessToken>`. Game IDs are `ringrush`, another configured game, etc. There is no backend API key embedded in the game and no direct database connection from the client.
 
 ## Account lifecycle

@@ -18,9 +18,12 @@ func defaults() -> Dictionary:
 func load_profile() -> void:
 	recovered_from_backup = false
 	unsupported_version = false
+	last_error = OK
+	var found_file := false
 	for candidate in [path, path + ".bak"]:
 		if not FileAccess.file_exists(candidate):
 			continue
+		found_file = true
 		var parser := JSON.new()
 		if parser.parse(FileAccess.get_file_as_string(candidate)) != OK:
 			continue
@@ -32,13 +35,15 @@ func load_profile() -> void:
 		if _valid(parsed):
 			data = parsed
 			recovered_from_backup = candidate != path
+			last_error = OK
 			return
+	if found_file: last_error = ERR_FILE_CORRUPT
 
 func _valid(value: Variant) -> bool:
 	if not value is Dictionary:
 		return false
 	if value.has("reward_receipts") and not value.reward_receipts is Dictionary:return false
-	return value.get("version") == 1 and value.get("coins") is float and value.coins >= 0 and value.get("entitlements") is Dictionary and value.get("transactions") is Dictionary and value.get("progress") is Dictionary and value.get("settings") is Dictionary
+	return value.get("version") == 1 and (value.get("coins") is float or value.get("coins") is int) and is_finite(float(value.coins)) and value.coins >= 0 and value.get("entitlements") is Dictionary and value.get("transactions") is Dictionary and value.get("progress") is Dictionary and value.get("settings") is Dictionary
 
 func commit(next: Dictionary) -> bool:
 	if unsupported_version:

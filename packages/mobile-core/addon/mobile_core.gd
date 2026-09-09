@@ -1,6 +1,7 @@
 extends Node
 ## Reusable service root; game-specific catalogs are supplied by each game.
 var save := CoreSaveStore.new()
+var account := CoreAccountSync.new()
 var commerce := CoreCommerce.new()
 var notices:=CoreNoticeBus.new()
 var notifications:=CoreNotifications.new()
@@ -12,6 +13,7 @@ func _ready() -> void:
 	elif OS.is_debug_build():
 		save = CoreSaveStore.new("user://profile.debug.json")
 	save.load_profile()
+	add_child(account)
 	add_child(commerce)
 	add_child(notices)
 	add_child(notifications)

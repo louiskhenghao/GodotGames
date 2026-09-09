@@ -1,11 +1,13 @@
 {
-  "version": "0.8.0",
-  "build": 8,
+  "version": "0.9.0",
+  "build": 9,
   "publisher": "ZX Labs",
   "website": "https://www.zxlabs.dev",
   "support_email": "support@zxlabs.dev",
   "privacy_url": "",
   "ads_provider": "unavailable",
   "iap_provider": "unavailable",
-  "release_ready": false
+  "release_ready": false,
+  "cloud_save_provider": "zxlabs-backend",
+  "persistent_login": false
 }

@@ -89,6 +89,11 @@ var preview_saved_stage:=-1
 
 func _ready() -> void:
 	get_tree().auto_accept_quit=false
+	var backend = JSON.parse_string(FileAccess.get_file_as_string("res://config/backend.json"))
+	var url: String = backend.get("api_url", "")
+	if OS.is_debug_build() or OS.has_feature("playtest"):
+		url = OS.get_environment("RINGRUSH_API_URL") if OS.has_environment("RINGRUSH_API_URL") else backend.get("development_api_url", url)
+	MobileCore.account.configure(MobileCore.save, backend.get("game_id", "ringrush"), url, func(): return mode == "home" and hud != null and hud.current_page in ["home", "account"] and MobileCore.commerce.pending.is_empty())
 	var profile_ready:=RushBootstrap.prepare(MobileCore.save)
 	MobileCore.configure_commerce(RushBalance.PRODUCTS, RushBalance.REWARDS)
 	arena = RushArena.new()
@@ -140,6 +145,7 @@ func _ready() -> void:
 	hud = RushHUD.new()
 	hud.game = self
 	add_child(hud)
+	MobileCore.account.profile_loaded.connect(_account_profile_loaded)
 	apply_settings()
 	MobileCore.commerce.reward_ready.connect(_claim_ad_reward)
 	MobileCore.commerce.completed.connect(_commerce_transition)
@@ -251,6 +257,9 @@ func select_stage(index: int) -> void:
 	hud.home()
 
 func start_run() -> void:
+	if MobileCore.account.busy:
+		hud.toast("Finishing cloud sync. Please try again in a moment.")
+		return
 	if has_resume() and not restoring:
 		hud.toast("Resume your saved fight, or bank it from the challenge menu.")
 		return
@@ -1160,3 +1169,12 @@ func request_quit() -> void:
 	# Let the audio driver release its playback references before SceneTree teardown.
 	await get_tree().create_timer(.25).timeout
 	get_tree().quit()
+
+func _account_profile_loaded() -> void:
+	if mode != "home": return
+	RushBootstrap.prepare(MobileCore.save)
+	apply_settings()
+	if hud.current_page == "home":
+		go_home()
+		hud.home()
+	elif hud.current_page == "account": hud.account_page()

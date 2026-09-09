@@ -34,3 +34,5 @@ Strict 当前应以非零状态退出并列出未完成项；不要把警告忽�
 ## 共享后端接入进展（2026-09-09）
 
 `apps/backend` 已新增 Express/TypeScript 服务、自建 Auth、Google Play 一次性商品验证/退款/恢复、持久化 worker 和带 revision 的云存档。Supabase 仅作 PostgreSQL。配置及部署见 [backend.md](backend.md)。当前客户端仍是试玩流程；后端完成不等于 Android Billing 插件、登录与云同步 UI、真实商店交易和正式隐私说明已经接通。
+
+0.9.0 已接入游戏登录和云存档，含离线本地存档、分账号缓存和冲突选择，见 [cloud-saves.md](cloud-saves.md)。正式 API/数据库/SMTP 配置、移动设备验收及真实 Billing 接入仍未完成。

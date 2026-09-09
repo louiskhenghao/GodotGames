@@ -115,7 +115,8 @@ def main():
         sync(game)
         shutil.copytree(ROOT / 'packages/mobile-core/tests', game / 'tests', dirs_exist_ok=True)
         godot(args.godot, game, '--headless', '--editor', '--import')
-        godot(args.godot, game, '--headless', '--script', 'res://tests/services_tests.gd')
+        for suite in sorted((game / 'tests').glob('*tests.gd')):
+            godot(args.godot, game, '--headless', '--script', 'res://' + str(suite.relative_to(game)))
         return
     game = project(args.game)
     sync(game)

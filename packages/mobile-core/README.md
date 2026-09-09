@@ -89,3 +89,39 @@ fx.clear()
 Fixed capacities: 96 rocks, 64 clouds/flame puffs, 64 flares, 12 ground waves, 128 projectile markers; legacy pools retain 192 sparks, 48 line strokes, 12 rings and 16 damage labels. Saturated decoration pools recycle their oldest slot. This renderer deliberately avoids lights per projectile, screen-reading shaders and runtime physics debris. Cracks are temporary geometry above the floor, not permanent terrain destruction.
 
 Instance color and custom shader data follow the [Godot MultiMesh interface](https://docs.godotengine.org/en/4.5/classes/class_multimesh.html). Native Compatibility and WebGL 2 are validated for RingRush; mobile device thermal/GPU validation remains a host release task.
+
+## Accounts and offline-first cloud saves
+
+`CoreApiClient`, `CoreCloudProfile`, and `CoreAccountSync` live in `addon/cloud/`. They use the shared `apps/backend` HTTP API; there are no RingRush imports or models. `CoreAccountSync` is exposed as `MobileCore.account`. It is idle until a host configures it and a player signs in.
+
+```gdscript
+# Configure once, before game-specific save migrations and commerce setup.
+MobileCore.account.configure(
+    MobileCore.save,
+    "your_game_id",
+    "https://your-api-host",
+    func(): return current_screen in ["home", "account"] and not payment_in_progress
+)
+MobileCore.account.profile_loaded.connect(refresh_game_from_profile)
+MobileCore.account.changed.connect(refresh_account_status)
+
+# Call from your own UI; don't log the password or store it in a profile.
+MobileCore.account.login(email_field.text, password_field.text)
+MobileCore.account.email_action("register", email_field.text, password_field.text)
+MobileCore.account.email_action("forgot-password", email_field.text)
+MobileCore.account.check_verification()
+MobileCore.account.sync_now()
+MobileCore.account.logout()
+```
+
+The host supplies game ID, HTTPS API origin, presentation, and a callback identifying a safe menu state. Do not start gameplay while `account.busy` is true: a sync can replace the active profile. Render `account.status`, `account.verified`, `account.busy`, and `account.conflict`; subscribe to `profile_loaded` to reapply game migrations, selected character, settings and resume availability. Keep using the **same CoreSaveStore instance**; account switching changes its path/data so wallet and commerce keep referencing the active profile.
+
+- Every ordinary save commits to disk first. Cloud uploads are debounced by 3 seconds; reconnect checks run at safe menus at most once per minute. Network failures never disable local play.
+- Guest progress and each user UUID have different files. A local account index reopens the last account's offline copy after restart. Credentials are **memory-only** in this version; restarting requires login to resume cloud sync. Keystore/Keychain-backed persistent login is a future platform adapter, not plaintext `user://` storage.
+- A new cloud account asks whether to import guest progress (`resolve("guest")`) or start fresh (`resolve("new")`). The guest file stays separate. Simulated IAP entitlement flags and IAP receipts are excluded from import. Existing playtest coins are gameplay progress, not evidence of a verified store transaction.
+- Diverging revisions require `resolve("device")` or `resolve("cloud")`. The selected remote revision is checked again before writing. Both choices create a timestamped local conflict backup; the backend retains its recent save history too. Choosing either save replaces the whole progression; balances are never summed.
+- Revision and digest metadata are committed with the profile. JSON number normalization prevents false conflicts between in-memory integer values and values parsed from HTTP. A lost upload acknowledgement is recognized on the next download.
+- Tokens, device-local reward promises and cloud bookkeeping are excluded from the upload. Gameplay stats, unlocks, badges, equipment and resumable runs belong inside the regular `CoreSaveStore` profile. Profiles up to 500 KB are supported; larger histories need a game-specific compaction/migration.
+- Ledger pages apply signed coin grants/refunds once by cursor. Refunds exceeding the balance retain `iap_debt`; future paid credits settle it. Inventory replaces the server-managed entitlement keys. This prepares cloud restoration for billing; it does **not** launch Play Billing or verify a client purchase.
+
+`packages/mobile-core/tests/cloud_tests.gd` runs in the independent generated core project via `test-core`. The RingRush-only visual presentation is `games/RingRush/game/account_screen.gd`; another game can provide its own UI without reimplementing synchronization.

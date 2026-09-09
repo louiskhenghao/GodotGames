@@ -6,6 +6,8 @@ const MUTED := Color("a9bac8")
 const TEAL := Color("4de1c6")
 const AMBER := Color("ffc466")
 const DISPLAY = preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
+var account_view := RushAccountScreen.new()
+var cloud_label: Label
 var game: Node3D
 var root: Control
 var screen: Control
@@ -72,6 +74,7 @@ func _ready() -> void:
 	message.add_theme_stylebox_override("normal", style(Color("147b72"), 12))
 	message.visible = false
 	root.add_child(message)
+	MobileCore.account.changed.connect(_account_changed)
 	MobileCore.notices.posted.connect(_present_notice)
 	MobileCore.commerce.completed.connect(_commerce_completed)
 	MobileCore.commerce.busy_changed.connect(_busy)
@@ -265,6 +268,13 @@ func home() -> void:
 	var options_button:=button("",settings,false,"gear")
 	options_button.custom_minimum_size=Vector2(50,50)
 	header.add_child(options_button)
+	cloud_label = label(MobileCore.account.status, 13, TEAL)
+	cloud_label.name = "CloudStatus"
+	cloud_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	cloud_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	cloud_label.gui_input.connect(func(event):
+		if event is InputEventMouseButton and event.pressed: account_page())
+	top.add_child(cloud_label)
 	var dock:=column(1,1)
 	dock.offset_top=-394 if not game.ads_removed() else -350
 	dock.offset_bottom=-64 if not game.ads_removed() else -20
@@ -1039,6 +1049,8 @@ func cosmetics() -> void:
 
 func settings() -> void:
 	var col := page("MAKE IT YOURS", "Tune the experience for your device.","settings",paused if game.mode=="paused" else home)
+	if game.mode == "home": col.add_child(button("ACCOUNT & CLOUD SAVE", account_page, true, "shield"))
+	else: col.add_child(body_text("Account & cloud saves are available from the main menu.", 16))
 	for entry in [["effects","EXTRA PARTICLES & IMPACT FLASH"],["haptics","HAPTIC FEEDBACK"],["sound","SOUND EFFECTS"],["music","MUSIC"],["low_quality","BATTERY SAVER"]]:
 		var key: String = entry[0]
 		var enabled: bool = MobileCore.save.data.settings.get(key,key!="low_quality")
@@ -1127,8 +1139,8 @@ func support_page() -> void:
 	col.add_child(body_text("Copy includes version, platform and renderer only. Nothing is sent automatically.",15))
 
 func privacy_page() -> void:
-	var col:=page("PRIVACY","LOCAL PLAYTEST", "privacy",settings)
-	col.add_child(body_text("This build saves progress and settings on this device or in this browser. Clearing browser data or removing the app can erase progress. There is no account or cloud save.",18))
+	var col:=page("PRIVACY","ACCOUNTS & LOCAL PLAY", "privacy",settings)
+	col.add_child(body_text("Guest play saves progress on this device. If you sign in, your email and game progress are sent to the configured ZX Labs account service for login and cloud saves. Offline progress stays on this device until a successful sync. Clearing app or browser data can erase unsynced progress.",18))
 	col.add_child(body_text("Advertising and purchases are simulations in the playtest. No live ad network, billing SDK, analytics or push notification service is connected in this build. Support opens your email app; sending a message is your choice.",18))
 	col.add_child(body_text("A published privacy policy and platform data disclosures must be completed before store release. This local notice describes the current playtest only.",16,AMBER))
 	var url:String=RushReleaseInfo.config().get("privacy_url","")
@@ -1203,3 +1215,11 @@ func _veil(top:float,bottom:float,start_alpha:float,end_alpha:float) -> void:
 	veil.anchor_bottom=bottom
 	veil.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	screen.add_child(veil)
+
+func account_page() -> void:
+	if game.mode != "home": return
+	account_view.show_page(self)
+
+func _account_changed() -> void:
+	if current_page == "home" and is_instance_valid(cloud_label): cloud_label.text = MobileCore.account.status
+	account_view.update()
