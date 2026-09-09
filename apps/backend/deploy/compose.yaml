@@ -1,0 +1,78 @@
+name: zxlabs-backend
+
+x-runtime: &runtime
+  image: ${BACKEND_IMAGE:-imlouiskhenghao/zxlabs:0.0.0}
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp:size=32m,mode=1777
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  env_file: [.env]
+  volumes:
+    - ./secrets:/run/secrets:ro
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  stop_grace_period: 40s
+
+services:
+  api:
+    <<: *runtime
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    # The image healthcheck tests database readiness too.
+
+  worker:
+    <<: *runtime
+    command: [node, apps/backend/dist/worker-main.js]
+    healthcheck:
+      disable: true
+    environment:
+      NODE_ENV: production
+    # No public port. Check logs and the status operation for stalled jobs.
+
+  admin:
+    image: ${BACKEND_IMAGE:-imlouiskhenghao/zxlabs:0.0.0}
+    profiles: [admin]
+    init: true
+    restart: "no"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: [admin.env]
+    volumes:
+      - ./secrets/supabase-ca.crt:/run/secrets/supabase-ca.crt:ro
+    healthcheck:
+      disable: true
+    command: [node, apps/backend/dist/ops/scripts/migrate.js]
+
+  # Optional HTTPS ingress for a VPS where ports 80 and 443 are free.
+  # If Hostinger already runs a proxy, leave this profile off and use that proxy.
+  caddy:
+    image: caddy:2-alpine
+    profiles: [edge]
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      API_HOST: ${API_HOST:?Set API_HOST in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+volumes:
+  caddy_data:
+  caddy_config:

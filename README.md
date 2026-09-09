@@ -71,3 +71,5 @@ npm run backend:dev
 Supabase 仅作为 PostgreSQL 数据库；账号由后端自建。API 与 worker 共用一套多游戏数据模型。游戏客户端的登录、正式 Billing 和云同步接入状态见 [backend README](apps/backend/README.md)。
 
 账号登录与离线／跨设备存档接入见 [cloud-saves.md](docs/tutorials/cloud-saves.md)。通用实现位于 `packages/mobile-core/addon/cloud/`。
+
+Docker Hub 镜像与 Hostinger VPS 部署说明：[hostinger-docker.md](docs/tutorials/hostinger-docker.md)。

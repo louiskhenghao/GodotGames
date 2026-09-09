@@ -55,3 +55,7 @@ docker build -f apps/backend/Dockerfile -t zxlabs-backend:local .
 首版实现 Google Play 一次性商品：金币包、去广告及永久装饰。订阅、Apple StoreKit、运营端主动申请退款尚未实现；订阅通知会进入可观测的失败队列，不会误当金币发货。退款入口是 Google Play / Play Console，本后端处理退款后的撤权和冲正，没有暴露玩家可调用的退款管理 API。
 
 **客户端接入状态：** 本次完成后端服务和接口。现有 RingRush 0.8 客户端仍使用本地存档/模拟支付；尚未加入登录页面、Android Billing 插件、安全令牌存储和云同步 UI。必须按客户端合约接入并通过 Play license tester 真机联调后，才能称为跨手机存档和正式 IAP 已在游戏内启用。
+
+## Docker Hub / Hostinger VPS
+
+后端镜像版本为 `imlouiskhenghao/zxlabs:0.0.0`。完整运行环境变量、迁移、worker、HTTPS 与升级说明见 [Hostinger Docker 部署](../../docs/tutorials/hostinger-docker.md)。可复制的配置在 [deploy/](deploy/)。镜像内含编译后的运维脚本，无需在服务器安装 Node/tsx。

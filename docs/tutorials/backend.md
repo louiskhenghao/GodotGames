@@ -93,6 +93,8 @@ API 与 worker 的 `DATABASE_URL` 使用 `game_backend_login`。不要把迁移 
 
 ## 6. 部署 API 与 worker
 
+使用已发布镜像、Supabase 环境变量与 Hostinger VPS 的完整步骤，见 [hostinger-docker.md](hostinger-docker.md)。
+
 同一个镜像运行两个进程类型：
 
 ```sh
@@ -127,6 +129,6 @@ npm run ops:retry -w @zxlabs/backend -- DEAD_JOB_ID
 
 ## 8. 正式上线前仍需完成的接入
 
-后端已具备可运行和可测试的 Auth、IAP 和云存档接口。还需要真实 Supabase/SMTP/Google 配置、部署地址，以及 RingRush 的登录/令牌安全存储、BillingClient、发货同步和云存档冲突 UX。按照 [客户端合约](../../apps/backend/docs/client-integration.md) 接入。
+后端已具备可运行和可测试的 Auth、IAP 和云存档接口。还需要真实 Supabase/SMTP/Google 配置、部署地址，以及持久令牌安全存储、BillingClient 和真实购买发货同步。RingRush 已接入内存会话登录、离线存档与云存档冲突 UX。按照 [客户端合约](../../apps/backend/docs/client-integration.md) 接入。
 
 在 Play license tester 上验证：成功/取消/pending、掉网重试、杀进程后补单、重复回调、换手机登录与 restore、金币退款、永久权益退款、邮件送达、密码重置与会话撤销。测试卡应使用独立 staging 数据库和 `allow_test_purchases=true`；生产默认拒绝测试卡。没有真实交易联调结果时不要将后端单元/集成测试当成商店验收。

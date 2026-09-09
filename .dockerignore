@@ -13,3 +13,8 @@ artifacts
 **/*.p12
 **/*.keystore
 **/*service-account*.json
+**/admin.env
+**/secrets
+**/*.pem
+**/*.key
+**/*.crt

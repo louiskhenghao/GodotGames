@@ -1,0 +1,17 @@
+{
+  "image": "imlouiskhenghao/zxlabs:0.0.0",
+  "version": "0.0.0",
+  "published_at": "2026-09-10",
+  "digest": "sha256:e00c7fa7b6f03e82aee866d699e798b75fcb7cadddbf9b8a3344929315757168",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "validation": [
+    "packaged migrations and repeat application",
+    "catalog seed",
+    "non-root read-only API database readiness",
+    "worker registration email delivered to local SMTP sink",
+    "published amd64 pull and migration execution"
+  ]
+}
