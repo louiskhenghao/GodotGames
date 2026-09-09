@@ -1,0 +1,20 @@
+# Development infrastructure only. Do not use these credentials in production.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: iap_dev
+      POSTGRES_PASSWORD: local-dev-only
+      POSTGRES_DB: iap_dev
+    ports: ["127.0.0.1:55440:5432"]
+    volumes: ["backend_dev_db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iap_dev -d iap_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  mailpit:
+    image: axllent/mailpit:v1.29
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+volumes:
+  backend_dev_db:

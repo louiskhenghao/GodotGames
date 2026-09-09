@@ -1,0 +1,11 @@
+{
+  "name": "game-workshop",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "backend:dev": "npm run dev --workspace @zxlabs/backend",
+    "backend:build": "npm run build --workspace @zxlabs/backend",
+    "backend:test": "npm run test --workspace @zxlabs/backend",
+    "backend:check": "npm run check --workspace @zxlabs/backend"
+  }
+}

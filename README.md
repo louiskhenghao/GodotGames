@@ -3,6 +3,8 @@
 Godot 4.5.1 游戏 monorepo。每个游戏独立运行、存档和导出，共享核心只有一份维护源。
 
 ```text
+apps/
+  backend/                 # 自建 Auth、Google Play IAP、云存档；多游戏共享
 games/
   RingRush/                 # 游戏代码、场景、素材、测试及游戏设计
 packages/
@@ -42,8 +44,10 @@ python3 tools/workspace.py new SpaceDash
 
 `new SpaceDash` 创建 `games/SpaceDash`，自带共享核心和独立存档，不复制 RingRush 模型或规则。导出到 repo 外的独立项目可以使用 `python3 tools/create_game.py /path/to/NewGame --name 'New Game'`。
 
-改共享功能时，编辑 **`packages/mobile-core/addon`**，然后执行 `sync`。各游戏的 `addons/mobile_core` 是忽略提交的生成副本。同步会拒绝覆盖副本中的手动修改，避免丢失工作。`run`、`editor`、`test`、`build` 会自动同步并导入；直接打开 Godot 前需先执行 `sync`。无需 npm、符号链接或额外 monorepo 框架。
+改共享功能时，编辑 **`packages/mobile-core/addon`**，然后执行 `sync`。各游戏的 `addons/mobile_core` 是忽略提交的生成副本。同步会拒绝覆盖副本中的手动修改，避免丢失工作。`run`、`editor`、`test`、`build` 会自动同步并导入；直接打开 Godot 前需先执行 `sync`。Godot 部分无需 npm、符号链接或额外 monorepo 框架。`apps/backend` 单独使用 Node 24 与 npm workspaces。
 
+- [共享后端：Auth、IAP、云存档](apps/backend/README.md)
+- [Supabase / Play Console / 后端部署](docs/tutorials/backend.md)
 - [架构与新增游戏约定](docs/monorepo.md)
 - [环境、APK/AAB、macOS 与 iOS 构建](docs/tutorials/builds.md)
 - [广告、购买与通知接入](docs/tutorials/monetization.md)
@@ -53,3 +57,15 @@ python3 tools/workspace.py new SpaceDash
 - [素材与清理规则](docs/assets.md)
 
 Android/iOS 已有导出预设；原生广告、支付及系统通知 adapter 尚未接入。网页和 Mac 试玩使用明确标示的模拟购买，不会收取费用。
+
+## 后端开发
+
+```sh
+npm ci
+npm run backend:check
+npm run backend:build
+# 配置 apps/backend/.env 后：
+npm run backend:dev
+```
+
+Supabase 仅作为 PostgreSQL 数据库；账号由后端自建。API 与 worker 共用一套多游戏数据模型。游戏客户端的登录、正式 Billing 和云同步接入状态见 [backend README](apps/backend/README.md)。

@@ -30,3 +30,7 @@ Strict 当前应以非零状态退出并列出未完成项；不要把警告忽�
 0.7 保留金币、购买等级及已获得徽章；徽章迁移为至少 Bronze。进行中战斗保留冻结的属性快照，通用战斗规则随版本更新。生产变更须明确保存兼容性，继续跑 game suite 与独立 core suite，不可用清空玩家存档来隐藏迁移问题。
 
 建议第一轮朋友试玩关注：第一次选到远程卡所需时间、首次 Boss 死亡原因、Q/E 的使用时机是否清晰、辅助是否值得金币、30/50 波的后期压力。此版本没有自动上传遥测；通过 Support 收集玩家自愿反馈即可。
+
+## 共享后端接入进展（2026-09-09）
+
+`apps/backend` 已新增 Express/TypeScript 服务、自建 Auth、Google Play 一次性商品验证/退款/恢复、持久化 worker 和带 revision 的云存档。Supabase 仅作 PostgreSQL。配置及部署见 [backend.md](backend.md)。当前客户端仍是试玩流程；后端完成不等于 Android Billing 插件、登录与云同步 UI、真实商店交易和正式隐私说明已经接通。

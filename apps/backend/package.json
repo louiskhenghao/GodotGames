@@ -1,0 +1,43 @@
+{
+  "name": "@zxlabs/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "start": "node dist/server.js",
+    "worker": "node dist/worker-main.js",
+    "worker:dev": "tsx --env-file=.env src/worker-main.ts",
+    "migrate": "tsx --env-file=.env scripts/migrate.ts",
+    "seed:ringrush": "tsx --env-file=.env scripts/seed-ringrush.ts",
+    "test": "tsx --test --test-concurrency=1 tests/*.test.ts",
+    "ops:status": "tsx --env-file=.env scripts/status.ts",
+    "ops:retry": "tsx --env-file=.env scripts/retry-job.ts"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "google-auth-library": "^11.0.2",
+    "helmet": "^8.3.0",
+    "jose": "^6.2.12",
+    "nodemailer": "^10.0.1",
+    "pg": "^8.23.0",
+    "pino": "^10.3.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.5.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "prettier": "^3.9.6",
+    "supertest": "^7.2.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}

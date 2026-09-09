@@ -14,3 +14,9 @@ artifacts/
 *.p12
 *.p8
 *.jks
+node_modules/
+apps/*/dist/
+.env
+.env.*
+!.env.example
+coverage/
