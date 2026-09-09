@@ -52,3 +52,13 @@ CLOUD_TEST_PASSWORD=YOUR_LOCAL_TEST_PASSWORD \
 ```
 
 该测试会修改测试账号的云进度，覆盖登录、导入、第二设备、断网/重连、冲突和登出；不应指向生产数据库。`tests/account_capture.gd` 用于 540/320 像素宽的页面截图检查。真实 Android/iOS 安装包的软键盘、后台恢复、存储和网络切换仍需设备验收。
+
+### 本次本地验收（2026-09-09）
+
+- Godot 4.5.1：30 项共享 cloud 检查、21 项既有 core 服务检查通过。
+- RingRush 原有 1,507 项检查通过；新增 6 项账号 UI／角色刷新／离线开战检查通过。
+- Godot 真实 HTTP → Docker Express API + worker → PostgreSQL：登录、游客导入、第二设备恢复、断网持久化、恢复网络补传、存档冲突选择、登出通过。注册与邮件流程使用本地 Mailpit，不发送到真实收件箱。
+- 540×960、320×568 页面截图已检查；Web 预检 CORS 返回允许的测试 origin；新版 Web 能完成载入。
+- Web 与 Mac 导出完成。未进行正式 Supabase 连通、真实发信域名、Android/iOS 真机及 Play Billing 验收。
+
+当前本机测试 API 为 `http://127.0.0.1:13099`，测试收件箱为 `http://127.0.0.1:18025`。在本机试玩注册后，可在这个收件箱打开验证邮件；这两个地址均不是生产服务。

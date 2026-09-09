@@ -1172,9 +1172,11 @@ func request_quit() -> void:
 
 func _account_profile_loaded() -> void:
 	if mode != "home": return
+	var account_open := hud.current_page == "account"
 	RushBootstrap.prepare(MobileCore.save)
 	apply_settings()
-	if hud.current_page == "home":
-		go_home()
-		hud.home()
-	elif hud.current_page == "account": hud.account_page()
+	if run_mode == "rift" and not RushChallenges.rift_open(MobileCore.save): run_mode = "sprint"
+	if not RushChallenges.available(MobileCore.save, run_mode, stage): stage = 0
+	go_home()
+	if account_open: hud.account_page()
+	else: hud.home()
